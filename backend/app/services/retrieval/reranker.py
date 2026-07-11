@@ -6,7 +6,7 @@ from typing import Optional
 from sentence_transformers import CrossEncoder
 
 from app.config import settings
-from app.services.vectorstore.chroma import RetrievalResult
+from app.services.retrieval.types import RetrievalResult
 
 logger = logging.getLogger("lumina.reranker")
 
@@ -29,9 +29,12 @@ class Reranker:
             cls._instance = cls()
         return cls._instance
 
-    def rerank(self, query: str, results: list[RetrievalResult]) -> list[RetrievalResult]:
+    def rerank(
+        self, query: str, results: list[RetrievalResult], top_k: Optional[int] = None
+    ) -> list[RetrievalResult]:
         if not results:
             return []
+        top_k = top_k or settings.TOP_K_RERANKED
         pairs = [(query, r.text) for r in results]
         scores = self.model.predict(pairs)
         for r, s in zip(results, scores):
@@ -40,7 +43,7 @@ class Reranker:
         # Always keep top_k. Only drop tail results whose sigmoid-normalized score is
         # below a soft noise floor (0.1 ~= raw score -2.2). This avoids returning an
         # empty context when raw logits are low across the board.
-        top = results[: settings.TOP_K_RERANKED]
+        top = results[:top_k]
         for r in top:
             r.relevance_score = _sigmoid(r.relevance_score)
         return [r for r in top if r.relevance_score >= 0.1] or top[:1]

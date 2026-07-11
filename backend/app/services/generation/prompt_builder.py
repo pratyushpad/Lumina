@@ -1,4 +1,4 @@
-from app.services.vectorstore.chroma import RetrievalResult
+from app.services.retrieval.types import RetrievalResult
 
 SYSTEM_PROMPT = """You are Lumina, a precise and intelligent document assistant.
 

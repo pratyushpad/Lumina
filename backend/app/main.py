@@ -11,13 +11,13 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi import _rate_limit_exceeded_handler
 
 from app.config import settings
-from app.database import create_tables
 from app.middleware.error_handler import register_error_handlers
 from app.middleware.rate_limit import limiter
+from app.migrations import run_migrations
 from app.routers import chat, config as config_router, documents, health, sessions
 from app.services.embedding.embedder import EmbeddingService
 from app.services.retrieval.reranker import Reranker
-from app.services.vectorstore.chroma import VectorStore
+from app.services.vectorstore.pgvector import PgVectorStore
 from app.utils.file_handler import ensure_dir
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -28,11 +28,10 @@ logger = logging.getLogger("lumina")
 async def lifespan(app: FastAPI):
     ensure_dir(settings.UPLOAD_DIR)
     ensure_dir(os.path.join(settings.PROCESSED_DIR, "images"))
-    ensure_dir(settings.CHROMA_PERSIST_DIR)
-    await create_tables()
+    await run_migrations()
     EmbeddingService.get()
     Reranker.get()
-    VectorStore.get()
+    PgVectorStore.get()
     logger.info("Lumina backend ready")
     yield
 

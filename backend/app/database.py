@@ -16,9 +16,4 @@ async def get_db():
             await session.close()
 
 
-async def create_tables():
-    # Import models so they register on Base.metadata
-    from app.models import document, message, session as session_model  # noqa: F401
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+# Schema is managed by Alembic (see app/migrations.py + backend/alembic/).

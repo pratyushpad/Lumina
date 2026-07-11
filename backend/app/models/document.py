@@ -11,7 +11,9 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    session_id = Column(String, ForeignKey("sessions.id"), nullable=False, index=True)
+    session_id = Column(
+        String, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     filename = Column(String, nullable=False)
     stored_path = Column(String, nullable=False)
     file_type = Column(String, nullable=False)

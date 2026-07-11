@@ -1,4 +1,10 @@
-"""Semantic chunker: recursive split preserving paragraph/sentence boundaries with overlap."""
+"""Chunking strategies: fixed-size, recursive (paragraph/sentence-aware), and semantic.
+
+All strategies share the same block/table/image handling; they differ only in how a
+text block is split. The strategy name is stored on every chunk so the eval harness
+can compare corpora chunked different ways side by side.
+"""
+import re
 from dataclasses import dataclass
 from typing import Optional
 
@@ -19,12 +25,18 @@ class ChunkData:
     filename: str
     has_associated_image: bool = False
     image_path: Optional[str] = None
+    chunking_strategy: str = "recursive"
 
 
-class TextChunker:
+class BaseChunker:
+    strategy = "base"
+
     def __init__(self, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
         self.chunk_size = chunk_size or settings.CHUNK_SIZE
         self.chunk_overlap = chunk_overlap or settings.CHUNK_OVERLAP
+
+    def split(self, text: str) -> list[str]:
+        raise NotImplementedError
 
     def chunk(
         self,
@@ -37,7 +49,6 @@ class TextChunker:
         idx = 0
         prev_tail = ""
 
-        # Group blocks by page (preserve order)
         for block in text_blocks:
             text = block["text"]
             page_num = block["page_num"]
@@ -53,9 +64,7 @@ class TextChunker:
                 idx += 1
                 continue
 
-            # Recursive split for text blocks
-            pieces = self._split_recursive(text, self.chunk_size)
-            for piece in pieces:
+            for piece in self.split(text):
                 stripped = piece.strip()
                 if len(stripped) < 50:
                     continue
@@ -83,6 +92,7 @@ class TextChunker:
                     filename=filename,
                     has_associated_image=True,
                     image_path=img["image_path"],
+                    chunking_strategy=self.strategy,
                 )
             )
             idx += 1
@@ -102,12 +112,41 @@ class TextChunker:
             char_count=len(text),
             token_estimate=estimate_tokens(text),
             filename=filename,
+            chunking_strategy=self.strategy,
         )
+
+    def _hard_split(self, text: str, size: int) -> list[str]:
+        result: list[str] = []
+        start = 0
+        while start < len(text):
+            end = min(start + size, len(text))
+            result.append(text[start:end])
+            if end >= len(text):
+                break
+            start = end - self.chunk_overlap
+        return result
+
+
+class FixedChunker(BaseChunker):
+    """Fixed-size character windows with overlap; ignores structure entirely."""
+
+    strategy = "fixed"
+
+    def split(self, text: str) -> list[str]:
+        return self._hard_split(text, self.chunk_size)
+
+
+class RecursiveChunker(BaseChunker):
+    """Recursive split preserving paragraph/sentence boundaries with overlap."""
+
+    strategy = "recursive"
+
+    def split(self, text: str) -> list[str]:
+        return self._split_recursive(text, self.chunk_size)
 
     def _split_recursive(self, text: str, size: int) -> list[str]:
         if len(text) <= size:
             return [text]
-        # Try paragraph
         for sep in ["\n\n", "\n", ". "]:
             if sep in text:
                 parts = text.split(sep)
@@ -128,13 +167,78 @@ class TextChunker:
                 if buf:
                     result.append(buf)
                 return result
-        # Hard split with overlap
-        result = []
-        start = 0
-        while start < len(text):
-            end = min(start + size, len(text))
-            result.append(text[start:end])
-            if end >= len(text):
-                break
-            start = end - self.chunk_overlap
-        return result
+        return self._hard_split(text, size)
+
+
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+class SemanticChunker(BaseChunker):
+    """Split at embedding-similarity breakpoints between adjacent sentences.
+
+    Sentences are embedded (MiniLM); a boundary is placed where the cosine similarity
+    between consecutive sentences drops below the corpus 25th percentile, then groups
+    are merged up to chunk_size. Falls back to recursive splitting for short blocks.
+    """
+
+    strategy = "semantic"
+    _BREAKPOINT_PERCENTILE = 25
+
+    def split(self, text: str) -> list[str]:
+        sentences = [s.strip() for s in _SENTENCE_RE.split(text) if s.strip()]
+        if len(sentences) < 4:
+            return RecursiveChunker(self.chunk_size, self.chunk_overlap).split(text)
+
+        import numpy as np
+
+        from app.services.embedding.embedder import EmbeddingService
+
+        embeddings = np.array(EmbeddingService.get().embed_texts(sentences))
+        # Cosine similarity between consecutive sentences (embeddings are normalized)
+        sims = (embeddings[:-1] * embeddings[1:]).sum(axis=1)
+        threshold = float(np.percentile(sims, self._BREAKPOINT_PERCENTILE))
+
+        groups: list[list[str]] = [[sentences[0]]]
+        for sent, sim in zip(sentences[1:], sims):
+            if sim < threshold:
+                groups.append([sent])
+            else:
+                groups[-1].append(sent)
+
+        # Merge groups into chunks up to chunk_size (hard-split any oversized group)
+        chunks: list[str] = []
+        buf = ""
+        for group in groups:
+            piece = " ".join(group)
+            candidate = (buf + " " + piece) if buf else piece
+            if len(candidate) <= self.chunk_size:
+                buf = candidate
+            else:
+                if buf:
+                    chunks.append(buf)
+                if len(piece) > self.chunk_size:
+                    chunks.extend(self._hard_split(piece, self.chunk_size))
+                    buf = ""
+                else:
+                    buf = piece
+        if buf:
+            chunks.append(buf)
+        return chunks
+
+
+_STRATEGIES = {c.strategy: c for c in (FixedChunker, RecursiveChunker, SemanticChunker)}
+
+
+def get_chunker(
+    strategy: Optional[str] = None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: Optional[int] = None,
+) -> BaseChunker:
+    name = strategy or settings.CHUNKING_STRATEGY
+    if name not in _STRATEGIES:
+        raise ValueError(f"Unknown chunking strategy: {name!r} (choose from {sorted(_STRATEGIES)})")
+    return _STRATEGIES[name](chunk_size, chunk_overlap)
+
+
+# Backwards-compatible alias (pre-strategy-refactor name)
+TextChunker = RecursiveChunker

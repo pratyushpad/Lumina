@@ -16,9 +16,8 @@ from app.schemas.chat import ChatRequest, ChatResponse, Citation, MessageRespons
 from app.services.generation.llm import LLMService
 from app.services.generation.prompt_builder import PromptBuilder
 from app.services.multimodal.vision import VisionService
-from app.services.retrieval.reranker import Reranker
-from app.services.retrieval.retriever import Retriever
-from app.services.vectorstore.chroma import RetrievalResult
+from app.services.retrieval.pipeline import RetrievalPipeline
+from app.services.retrieval.types import RetrievalResult
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 logger = logging.getLogger("lumina.chat")
@@ -50,13 +49,11 @@ async def _run_retrieval(
     query: str, document_ids: list[str]
 ) -> tuple[list[RetrievalResult], int]:
     t0 = time.time()
-    retriever = Retriever()
-    candidates = await retriever.retrieve(query, document_ids)
-    reranked = Reranker.get().rerank(query, candidates)
-    if any(r.has_associated_image for r in reranked):
-        reranked = await VisionService.get().enrich_retrieval_results(reranked, query)
+    results = await RetrievalPipeline().run(query, document_ids)
+    if any(r.has_associated_image for r in results):
+        results = await VisionService.get().enrich_retrieval_results(results, query)
     elapsed = int((time.time() - t0) * 1000)
-    return reranked, elapsed
+    return results, elapsed
 
 
 @router.post("/{session_id}", response_model=ChatResponse)

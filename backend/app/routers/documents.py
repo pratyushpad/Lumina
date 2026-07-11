@@ -20,7 +20,8 @@ from app.schemas.document import (
 from app.services.embedding.embedder import EmbeddingService
 from app.services.ingestion.extractor import IngestionPipeline
 from app.services.multimodal.vision import VisionService
-from app.services.vectorstore.chroma import VectorStore
+from app.services.retrieval.sparse import BM25Index
+from app.services.vectorstore.pgvector import PgVectorStore
 from app.utils.file_handler import (
     cleanup_document_files,
     get_file_extension,
@@ -38,7 +39,7 @@ async def _process_document_bg(
     """Background task: parse → chunk → embed → store → update DB row."""
     pipeline = IngestionPipeline()
     embedder = EmbeddingService.get()
-    store = VectorStore.get()
+    store = PgVectorStore.get()
 
     async with AsyncSessionLocal() as db:
         try:
@@ -57,7 +58,8 @@ async def _process_document_bg(
 
             if chunks:
                 vectors = embedder.embed_texts([c.text for c in chunks])
-                store.add_chunks(chunks, vectors)
+                await store.add_chunks(chunks, vectors)
+                BM25Index.get().invalidate(document_id)
 
             doc = await db.get(Document, document_id)
             if doc:
@@ -158,7 +160,8 @@ async def delete_document(document_id: str, db: AsyncSession = Depends(get_db)):
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(404, "Document not found")
-    chunks_deleted = VectorStore.get().delete_by_document_id(document_id)
+    chunks_deleted = await PgVectorStore.get().delete_by_document_id(document_id)
+    BM25Index.get().invalidate(document_id)
     cleanup_document_files(doc.stored_path, doc.id, settings.PROCESSED_DIR)
     await db.delete(doc)
     await db.commit()

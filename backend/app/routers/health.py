@@ -5,17 +5,17 @@ from sqlalchemy import text
 
 from app.database import engine
 from app.services.embedding.embedder import EmbeddingService
-from app.services.vectorstore.chroma import VectorStore
+from app.services.vectorstore.pgvector import PgVectorStore
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
 async def health():
-    services = {"chroma": False, "db": False, "embedder": False}
+    services = {"vectorstore": False, "db": False, "embedder": False}
     try:
-        VectorStore.get().get_stats()
-        services["chroma"] = True
+        await PgVectorStore.get().get_stats()
+        services["vectorstore"] = True
     except Exception:
         pass
     try:

@@ -11,7 +11,8 @@ from app.schemas.session import (
     SessionRename,
     SessionResponse,
 )
-from app.services.vectorstore.chroma import VectorStore
+from app.services.retrieval.sparse import BM25Index
+from app.services.vectorstore.pgvector import PgVectorStore
 from app.utils.file_handler import cleanup_document_files, rmtree_safe
 import os
 
@@ -82,9 +83,10 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
     # Cascade vectors + files
     docs_res = await db.execute(select(Document).where(Document.session_id == session_id))
     docs = docs_res.scalars().all()
-    store = VectorStore.get()
+    store = PgVectorStore.get()
     for d in docs:
-        store.delete_by_document_id(d.id)
+        await store.delete_by_document_id(d.id)
+        BM25Index.get().invalidate(d.id)
         cleanup_document_files(d.stored_path, d.id, settings.PROCESSED_DIR)
 
     # Remove session-scoped upload dir

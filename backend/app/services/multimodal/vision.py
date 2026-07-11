@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 from app.config import settings
-from app.services.vectorstore.chroma import RetrievalResult
+from app.services.retrieval.types import RetrievalResult
 from app.utils.image_utils import encode_image_base64
 import base64
 

@@ -1,12 +1,19 @@
 """Orchestrates parsing + chunking for a single document."""
-from app.services.ingestion.chunker import ChunkData, TextChunker
+from typing import Optional
+
+from app.services.ingestion.chunker import ChunkData, get_chunker
 from app.services.ingestion.parser import DocumentParser, ParseResult
 
 
 class IngestionPipeline:
-    def __init__(self):
+    def __init__(
+        self,
+        chunking_strategy: Optional[str] = None,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+    ):
         self.parser = DocumentParser()
-        self.chunker = TextChunker()
+        self.chunker = get_chunker(chunking_strategy, chunk_size, chunk_overlap)
 
     async def process(
         self, file_path: str, document_id: str, file_type: str, filename: str
