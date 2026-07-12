@@ -101,7 +101,8 @@ class PgVectorStore:
                 "has_associated_image": bool(c.has_associated_image),
                 "image_path": c.image_path,
                 "chunking_strategy": c.chunking_strategy,
-                "text": c.text,
+                # PDF extractors can emit NUL bytes, which Postgres TEXT rejects
+                "text": c.text.replace("\x00", ""),
                 "embedding": emb,
             }
             for c, emb in zip(chunks, embeddings)

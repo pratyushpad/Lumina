@@ -14,15 +14,17 @@ dev-frontend:
 	cd frontend && npm run dev
 
 # --- Quality ---
-test:
-	cd backend && python -m pytest -q
+PY := backend/.venv/bin/python
 
-# --- Data / Eval (targets grow in later phases) ---
+test:
+	cd backend && .venv/bin/python -m pytest -q
+
+# --- Data / Eval ---
 ingest:
-	cd backend && python scripts/ingest_corpus.py
+	$(PY) backend/scripts/ingest_corpus.py
 
 eval:
-	cd backend && python -m eval.run_eval
+	$(PY) eval/run_eval.py
 
 eval-retrieval:
-	cd backend && python -m eval.run_eval --retrieval-only
+	$(PY) eval/run_eval.py --retrieval-only

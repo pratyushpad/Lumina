@@ -46,7 +46,9 @@ async def ingest(corpus_dir: Path, session_id: str, strategy: str | None) -> dic
 
     files = sorted(
         p for p in corpus_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in settings.ALLOWED_EXTENSIONS
+        if p.is_file()
+        and p.suffix.lower() in settings.ALLOWED_EXTENSIONS
+        and p.name != "README.md"  # corpus documentation, not corpus content
     )
     if not files:
         raise SystemExit(f"No ingestible files in {corpus_dir}")
@@ -78,6 +80,17 @@ async def ingest(corpus_dir: Path, session_id: str, strategy: str | None) -> dic
         await store.delete_by_document_id(document_id)
         BM25Index.get().invalidate(document_id)
 
+        # Document row must exist before chunks (FK), and before status flips to ready
+        async with AsyncSessionLocal() as db:
+            doc = await db.get(Document, document_id)
+            if doc is None:
+                doc = Document(id=document_id, session_id=session_id,
+                               filename=path.name, stored_path=str(path),
+                               file_type=file_type)
+                db.add(doc)
+            doc.status = "processing"
+            await db.commit()
+
         parse_result, chunks = await pipeline.process(
             str(path), document_id, file_type, path.name
         )
@@ -87,11 +100,6 @@ async def ingest(corpus_dir: Path, session_id: str, strategy: str | None) -> dic
 
         async with AsyncSessionLocal() as db:
             doc = await db.get(Document, document_id)
-            if doc is None:
-                doc = Document(id=document_id, session_id=session_id,
-                               filename=path.name, stored_path=str(path),
-                               file_type=file_type)
-                db.add(doc)
             doc.status = "ready"
             doc.num_chunks = len(chunks)
             doc.num_pages = parse_result.num_pages
