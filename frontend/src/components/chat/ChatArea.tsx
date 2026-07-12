@@ -19,6 +19,7 @@ export function ChatArea({ sessionId }: { sessionId: string }) {
   const setStreaming = useChatStore((s) => s.setStreaming);
   const appendToken = useChatStore((s) => s.appendToken);
   const setStreamingCitations = useChatStore((s) => s.setStreamingCitations);
+  const setStreamingMeta = useChatStore((s) => s.setStreamingMeta);
   const clearStream = useChatStore((s) => s.clearStream);
 
   const [input, setInput] = useState("");
@@ -66,14 +67,18 @@ export function ChatArea({ sessionId }: { sessionId: string }) {
     cleanupRef.current = streamChat(sessionId, query, {
       onCitations: (c) => setStreamingCitations(c),
       onToken: (t) => appendToken(t),
-      onDone: () => {
+      onMeta: (m) => setStreamingMeta(m),
+      onDone: (messageId) => {
         const finalContent = useChatStore.getState().streamingContent;
         const finalCitations = useChatStore.getState().streamingCitations;
+        const finalMeta = useChatStore.getState().streamingMeta;
         addMessage(sessionId, {
-          id: `asst-${Date.now()}`,
+          id: messageId || `err-${Date.now()}`,
           role: "assistant",
           content: finalContent,
           citations: finalCitations,
+          meta: finalMeta,
+          model_used: finalMeta ? `${finalMeta.provider}:${finalMeta.model}` : null,
           created_at: new Date().toISOString(),
         });
         clearStream();
@@ -110,6 +115,9 @@ export function ChatArea({ sessionId }: { sessionId: string }) {
                 key={m.id}
                 content={m.content}
                 citations={m.citations || []}
+                meta={m.meta}
+                modelUsed={m.model_used}
+                messageId={m.id}
               />
             )
           )}

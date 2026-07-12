@@ -6,6 +6,8 @@ import type {
   Message,
   Session,
   SessionListResponse,
+  StreamMeta,
+  Trace,
 } from "@/types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -51,6 +53,9 @@ export const api = {
   // chat history
   getHistory: (sessionId: string) => http<Message[]>(`/api/chat/${sessionId}/history`),
 
+  // traces
+  getTrace: (messageId: string) => http<Trace>(`/api/traces/${messageId}`),
+
   // config (model name, limits)
   getConfig: () =>
     http<{
@@ -64,7 +69,8 @@ export const api = {
 export interface StreamHandlers {
   onCitations: (c: Citation[]) => void;
   onToken: (t: string) => void;
-  onDone: () => void;
+  onMeta?: (m: StreamMeta) => void;
+  onDone: (messageId?: string) => void;
   onError: (e: string) => void;
 }
 
@@ -83,8 +89,9 @@ export function streamChat(sessionId: string, query: string, h: StreamHandlers):
       const payload = JSON.parse(e.data);
       if (payload.type === "citations") h.onCitations(payload.data || []);
       else if (payload.type === "token") h.onToken(payload.data || "");
+      else if (payload.type === "meta") h.onMeta?.(payload.data);
       else if (payload.type === "done") {
-        h.onDone();
+        h.onDone(payload.data?.message_id);
         finish();
       } else if (payload.type === "error") {
         h.onError(payload.data || "stream error");

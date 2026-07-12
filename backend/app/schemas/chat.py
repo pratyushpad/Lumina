@@ -38,6 +38,7 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     citations: Optional[list[Citation]] = None
+    model_used: Optional[str] = None
     created_at: datetime
 
 

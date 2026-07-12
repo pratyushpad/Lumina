@@ -14,7 +14,7 @@ from app.config import settings
 from app.middleware.error_handler import register_error_handlers
 from app.middleware.rate_limit import limiter
 from app.migrations import run_migrations
-from app.routers import chat, config as config_router, documents, health, sessions
+from app.routers import chat, config as config_router, documents, health, sessions, traces
 from app.services.embedding.embedder import EmbeddingService
 from app.services.retrieval.reranker import Reranker
 from app.services.vectorstore.pgvector import PgVectorStore
@@ -58,6 +58,7 @@ app.include_router(config_router.router)
 app.include_router(sessions.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(traces.router)
 
 images_path = os.path.join(settings.PROCESSED_DIR, "images")
 ensure_dir(images_path)

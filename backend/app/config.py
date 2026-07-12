@@ -27,6 +27,13 @@ class Settings(BaseSettings):
 
     LLM_MODEL: str = "gemini-2.5-flash"
     LLM_MAX_TOKENS: int = 2048
+
+    # Provider routing: try providers in order, fall back on failure/unhealthy.
+    # "local" = OpenAI-compatible endpoint (Ollama/vLLM on the GPU box or this machine).
+    LLM_PROVIDER_ORDER: str = "local,gemini"
+    LOCAL_LLM_BASE_URL: str = "http://localhost:11434/v1"
+    LOCAL_LLM_MODEL: str = "qwen2.5:7b-instruct-q4_K_M"
+    LOCAL_LLM_TIMEOUT_S: float = 120.0
     # slowapi rate limits (per IP)
     RATE_LIMIT_CHAT: str = "20/minute"
     RATE_LIMIT_UPLOAD: str = "10/minute"

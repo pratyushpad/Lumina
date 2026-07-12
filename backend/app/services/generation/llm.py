@@ -1,11 +1,14 @@
-"""Gemini generation service."""
+"""LLM façade over the provider router (local GPU serving with hosted fallback).
+
+Back-compat surface (generate -> (text, tokens), generate_stream -> str tokens)
+is kept for existing callers; new callers that need provider/timing metadata use
+generate_result / generate_stream_events.
+"""
 import logging
 from typing import AsyncGenerator, Optional
 
-from google import genai
-from google.genai import types
-
-from app.config import settings
+from app.services.generation.providers.base import GenResult, StreamEvent
+from app.services.generation.providers.router import ProviderRouter
 
 logger = logging.getLogger("lumina.llm")
 
@@ -14,8 +17,7 @@ class LLMService:
     _instance: Optional["LLMService"] = None
 
     def __init__(self):
-        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        self.model = settings.LLM_MODEL
+        self.router = ProviderRouter.get()
 
     @classmethod
     def get(cls) -> "LLMService":
@@ -23,33 +25,20 @@ class LLMService:
             cls._instance = cls()
         return cls._instance
 
-    def _config(self, system: str) -> types.GenerateContentConfig:
-        return types.GenerateContentConfig(
-            system_instruction=system,
-            max_output_tokens=settings.LLM_MAX_TOKENS,
-            temperature=0.2,
-        )
-
     async def generate(self, system: str, user: str) -> tuple[str, int]:
-        resp = await self.client.aio.models.generate_content(
-            model=self.model,
-            contents=user,
-            config=self._config(system),
-        )
-        text = resp.text or ""
-        usage = resp.usage_metadata
-        tokens = 0
-        if usage:
-            tokens = (usage.prompt_token_count or 0) + (usage.candidates_token_count or 0)
-        return text, tokens
+        r = await self.router.generate(system, user)
+        return r.text, r.prompt_tokens + r.completion_tokens
+
+    async def generate_result(self, system: str, user: str) -> GenResult:
+        return await self.router.generate(system, user)
 
     async def generate_stream(self, system: str, user: str) -> AsyncGenerator[str, None]:
-        # generate_content_stream is itself an async-generator function,
-        # so calling it returns an async iterator — do NOT await it.
-        async for chunk in self.client.aio.models.generate_content_stream(
-            model=self.model,
-            contents=user,
-            config=self._config(system),
-        ):
-            if chunk.text:
-                yield chunk.text
+        async for ev in self.router.generate_stream(system, user):
+            if isinstance(ev, str):
+                yield ev
+
+    async def generate_stream_events(
+        self, system: str, user: str
+    ) -> AsyncGenerator[StreamEvent, None]:
+        async for ev in self.router.generate_stream(system, user):
+            yield ev
