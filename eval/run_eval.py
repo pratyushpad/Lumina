@@ -102,7 +102,7 @@ async def eval_retrieval(items: list[dict], mq_delay: float = 13.0) -> list[dict
     return rows
 
 
-async def eval_generation(items: list[dict], judge_delay: float) -> dict:
+async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0) -> dict:
     """Generate answers with the production config and grade them with the judge."""
     from app.services.generation.llm import LLMService
     from app.services.generation.prompt_builder import PromptBuilder
@@ -118,10 +118,14 @@ async def eval_generation(items: list[dict], judge_delay: float) -> dict:
     llm = LLMService.get()
     judge = Judge(llm.generate, delay_s=judge_delay)
 
+    answerable = [i for i in items if i.get("relevant_chunk_ids")]
+    if limit:
+        # Deterministic stratified subset (every k-th item keeps all four docs
+        # represented) to stay inside the free-tier daily request quota.
+        step = max(1, len(answerable) // limit)
+        answerable = answerable[::step][:limit]
     per_query = []
-    for i, item in enumerate(items):
-        if not item.get("relevant_chunk_ids"):
-            continue
+    for i, item in enumerate(answerable):
         q, ref = item["question"], item["reference_answer"]
         chunks = await pipeline.run(q, _doc_ids())
         context_texts = [c.text for c in chunks]
@@ -143,7 +147,7 @@ async def eval_generation(items: list[dict], judge_delay: float) -> dict:
             logger.warning("judge failed on %s: %s — skipping item", item["qid"], e)
             continue
         per_query.append(scores)
-        logger.info("[%d/%d] %s %s", i + 1, len(items), item["qid"],
+        logger.info("[%d/%d] %s %s", i + 1, len(answerable), item["qid"],
                     {k: round(v, 2) for k, v in scores.items()})
 
     agg = aggregate(per_query)
@@ -194,6 +198,8 @@ async def main() -> None:
                     help="seconds between LLM calls (free tier is 5 RPM)")
     ap.add_argument("--mq-delay", type=float, default=13.0,
                     help="seconds between queries in query-transform configs")
+    ap.add_argument("--gen-limit", type=int, default=0,
+                    help="cap generation+judge items (0 = all) to respect daily quota")
     args = ap.parse_args()
 
     items = load_dataset()
@@ -204,7 +210,7 @@ async def main() -> None:
         "refusal": await eval_refusal(items),
     }
     if not args.retrieval_only:
-        run["generation"] = await eval_generation(items, args.judge_delay)
+        run["generation"] = await eval_generation(items, args.judge_delay, args.gen_limit)
 
     RUNS_DIR.mkdir(exist_ok=True)
     out = RUNS_DIR / f"run_{run['timestamp'].replace(':', '-')}.json"
