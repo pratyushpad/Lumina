@@ -107,7 +107,7 @@ async def upload_document(
 
     if bytes_written > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         os.remove(stored_path)
-        raise HTTPException(400, f"File exceeds {settings.MAX_FILE_SIZE_MB} MB limit")
+        raise HTTPException(413, f"File exceeds {settings.MAX_FILE_SIZE_MB} MB limit")
 
     doc = Document(
         id=document_id,

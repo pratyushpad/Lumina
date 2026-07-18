@@ -1,4 +1,8 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import json
+from typing import Annotated
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -45,7 +49,22 @@ class Settings(BaseSettings):
     RATE_LIMIT_CHAT: str = "20/minute"
     RATE_LIMIT_UPLOAD: str = "10/minute"
     RATE_LIMIT_DEFAULT: str = "60/minute"
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    # Comma-separated origins in env (e.g. "https://app.example.com,https://example.com").
+    # Wildcards are rejected: allow_credentials=True + "*" would be an open CORS policy.
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            s = v.strip()
+            if s.startswith("["):  # legacy JSON-array form
+                v = json.loads(s)
+            else:
+                v = [o.strip() for o in s.split(",") if o.strip()]
+        if any(o == "*" for o in v):
+            raise ValueError("CORS_ORIGINS must list explicit origins; '*' is not allowed")
+        return v
     MAX_FILE_SIZE_MB: int = 50
     ALLOWED_EXTENSIONS: list[str] = [".pdf", ".txt", ".md", ".png", ".jpg", ".jpeg"]
 
