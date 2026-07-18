@@ -116,7 +116,27 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
     pipeline = RetrievalPipeline(cfg)
     builder = PromptBuilder()
     llm = LLMService.get()
-    judge = Judge(llm.generate, delay_s=judge_delay)
+
+    # EVAL_JUDGE_MODEL routes only the judge to a different Gemini model (e.g. a
+    # flash-lite tier with a higher free-tier daily quota). Generation always stays
+    # on the production model — the judge model is recorded in the report caveats.
+    from app.config import settings
+
+    judge_model = os.environ.get("EVAL_JUDGE_MODEL")
+    if judge_model:
+        from app.services.generation.providers.gemini import GeminiProvider
+
+        judge_provider = GeminiProvider()
+        judge_provider.model = judge_model
+
+        async def judge_generate(system: str, user: str):
+            r = await judge_provider.generate(system, user)
+            return r.text, r.prompt_tokens + r.completion_tokens
+
+        logger.info("Judge model override: %s", judge_model)
+        judge = Judge(judge_generate, delay_s=judge_delay)
+    else:
+        judge = Judge(llm.generate, delay_s=judge_delay)
 
     answerable = [i for i in items if i.get("relevant_chunk_ids")]
     if limit:
@@ -155,7 +175,14 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
                     {k: round(v, 2) for k, v in scores.items()})
 
     agg = aggregate(per_query)
-    return {"config": GENERATION_CONFIG, "metrics": agg, "n": len(per_query)}
+    return {
+        "config": GENERATION_CONFIG,
+        "metrics": agg,
+        "n": len(per_query),
+        "n_total_answerable": len(answerable),
+        "generator_model": settings.LLM_MODEL,
+        "judge_model": judge_model or settings.LLM_MODEL,
+    }
 
 
 async def eval_refusal(items: list[dict]) -> dict:
