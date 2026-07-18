@@ -1,0 +1,25 @@
+# Production image for Hugging Face Spaces (Docker runtime).
+# Local dev keeps using ./Dockerfile via docker-compose.
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends gcc g++ && rm -rf /var/lib/apt/lists/*
+
+# HF Spaces runs the container as an arbitrary non-root user; uid 1000 matches its convention.
+RUN useradd -m -u 1000 appuser
+WORKDIR /app
+ENV HF_HOME=/app/.cache/huggingface \
+    PYTHONUNBUFFERED=1
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Bake both models into the image so cold starts never hit the network.
+RUN python -c "from sentence_transformers import SentenceTransformer, CrossEncoder; \
+    SentenceTransformer('all-MiniLM-L6-v2'); \
+    CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
+
+COPY . .
+RUN mkdir -p storage/uploads storage/processed/images && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 7860
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

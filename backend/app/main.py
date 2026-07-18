@@ -29,10 +29,28 @@ async def lifespan(app: FastAPI):
     ensure_dir(settings.UPLOAD_DIR)
     ensure_dir(os.path.join(settings.PROCESSED_DIR, "images"))
     await run_migrations()
-    EmbeddingService.get()
-    Reranker.get()
+    embedder = EmbeddingService.get()
+    reranker = Reranker.get()
     PgVectorStore.get()
-    logger.info("Lumina backend ready")
+    # Warm-up: exercise both models once so the first user query pays no
+    # graph-compilation/first-inference cost after a cold start.
+    from app.services.retrieval.types import RetrievalResult
+
+    embedder.embed_query("warm-up query")
+    reranker.rerank(
+        "warm-up query",
+        [
+            RetrievalResult(
+                chunk_id="warmup",
+                document_id="warmup",
+                text="warm-up passage",
+                page_num=0,
+                filename="warmup",
+                distance=0.0,
+            )
+        ],
+    )
+    logger.info("Lumina backend ready (models warmed)")
     yield
 
 

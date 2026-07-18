@@ -1,7 +1,7 @@
 .venv
-venv
+storage
+.env
 __pycache__
 *.pyc
 .pytest_cache
-storage
-.env
+.cache
