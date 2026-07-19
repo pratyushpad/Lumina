@@ -127,8 +127,8 @@ export function ChatArea({
                     onClick={() => send(s.query)}
                     className={`hairline px-3 py-2 text-left text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                       s.guardrail
-                        ? "text-textMuted hover:text-textSecondary hover:border-white/20"
-                        : "bg-card text-textSecondary hover:text-white hover:border-white/30"
+                        ? "text-textMuted hover:text-textSecondary hover:border-textPrimary/20"
+                        : "bg-card text-textSecondary hover:text-textPrimary hover:border-textPrimary/30"
                     }`}
                   >
                     {s.guardrail && (
@@ -148,7 +148,7 @@ export function ChatArea({
                 key={m.id}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="self-end max-w-[85%] hairline-strong bg-white text-black px-4 py-2.5 text-sm font-medium tracking-tight2"
+                className="self-end max-w-[85%] hairline-strong bg-textPrimary text-background px-4 py-2.5 text-sm font-medium tracking-tight2"
               >
                 {m.content}
               </motion.div>
@@ -189,12 +189,12 @@ export function ChatArea({
               placeholder="Ask your documents…"
               rows={1}
               style={{ maxHeight: `${MAX_TEXTAREA_PX}px` }}
-              className="flex-1 resize-none overflow-y-auto hairline bg-card px-4 py-3 text-sm outline-none focus:border-white/30 transition-colors placeholder:text-textMuted"
+              className="flex-1 resize-none overflow-y-auto hairline bg-card px-4 py-3 text-sm outline-none focus:border-textPrimary/30 transition-colors placeholder:text-textMuted"
             />
             <button
               onClick={() => send()}
               disabled={isStreaming || !input.trim()}
-              className="hairline-strong bg-white text-black p-3 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-textPrimary/90 transition-colors"
+              className="hairline-strong bg-textPrimary text-background p-3 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-textPrimary/90 transition-colors"
             >
               <ArrowUp size={16} strokeWidth={2.5} />
             </button>

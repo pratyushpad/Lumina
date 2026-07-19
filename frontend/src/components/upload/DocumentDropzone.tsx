@@ -51,16 +51,16 @@ export function DocumentDropzone({ sessionId }: { sessionId: string }) {
       className={`group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors ${
         isDragActive
           ? "bg-accentDim hairline-strong"
-          : "hairline bg-card hover:border-white/30"
+          : "hairline bg-card hover:border-textPrimary/30"
       }`}
     >
       <input {...getInputProps()} />
       <ArrowUpRight
-        className="text-white transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        className="text-textPrimary transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
         size={18}
       />
       <div className="text-sm leading-tight">
-        <div className="font-medium text-white tracking-tight2">Upload document</div>
+        <div className="font-medium text-textPrimary tracking-tight2">Upload document</div>
         <div className="text-[11px] uppercase tracking-tight2 text-textMuted mt-0.5">
           PDF · TXT · MD · PNG · JPG
         </div>

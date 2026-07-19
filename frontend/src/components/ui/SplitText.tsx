@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useMemo } from "react";
 
 interface SplitTextProps {
@@ -23,6 +23,8 @@ export function SplitText({
   inView = false,
 }: SplitTextProps) {
   const words = useMemo(() => text.split(" "), [text]);
+  const reduce = useReducedMotion();
+  if (reduce) return <span className={className}>{text}</span>;
 
   const container = {
     hidden: {},

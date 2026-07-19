@@ -37,8 +37,10 @@ def write_report(run: dict, dest: Path) -> None:
             "",
             f"Top cross-encoder score per query ({ref['n_answerable']} answerable, "
             f"{ref['n_unanswerable']} unanswerable questions), production config. "
-            "The gate refuses when the top score is below the threshold "
-            "(`MIN_RERANK_SCORE`).",
+            "The two-stage production gate is modeled exactly: refusal requires the "
+            "top cross-encoder score below the threshold (`MIN_RERANK_SCORE`) AND the "
+            "bi-encoder second chance to fail (max cosine sim over top candidates < "
+            "`MIN_BIENCODER_SIM`).",
             "",
             "| Threshold | False-refusal rate | False-answer rate |",
             "|---|---|---|",

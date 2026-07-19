@@ -1,18 +1,32 @@
-import { Command, Plus } from "lucide-react";
+import { Command, Loader2, Plus } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { GradientButton } from "@/components/ui/GradientButton";
 import { SessionList } from "@/components/sessions/SessionList";
 import { api } from "@/lib/api";
 import { useSessionStore } from "@/stores/sessionStore";
+import { toast } from "@/stores/toastStore";
 
 export function Sidebar() {
   const addSession = useSessionStore((s) => s.addSession);
   const setActive = useSessionStore((s) => s.setActiveSession);
+  const [creating, setCreating] = useState(false);
 
   const newSession = async () => {
-    const s = await api.createSession("New Session");
-    addSession(s);
-    setActive(s.id);
+    if (creating) return;
+    setCreating(true);
+    try {
+      const s = await api.createSession("New Session");
+      addSession(s);
+      setActive(s.id);
+    } catch {
+      toast.error(
+        "Could not create session",
+        "The server may be waking up. Give it up to a minute and try again."
+      );
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -29,8 +43,16 @@ export function Sidebar() {
         </div>
       </Link>
       <div className="border-b border-line p-3">
-        <GradientButton onClick={newSession} className="w-full">
-          <Plus size={14} /> New session
+        <GradientButton onClick={newSession} disabled={creating} className="w-full disabled:opacity-60">
+          {creating ? (
+            <>
+              <Loader2 size={14} className="animate-spin" /> Creating
+            </>
+          ) : (
+            <>
+              <Plus size={14} /> New session
+            </>
+          )}
         </GradientButton>
       </div>
       <div className="flex-1 overflow-y-auto py-2">

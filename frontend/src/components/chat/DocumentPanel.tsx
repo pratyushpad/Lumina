@@ -12,7 +12,7 @@ function StatusBadge({ status }: { status: Document["status"] }) {
       label: "PROCESSING",
       dot: "bg-amber-300 animate-pulse",
     },
-    ready: { cls: "text-white border-white/40", label: "READY", dot: "bg-accent" },
+    ready: { cls: "text-textPrimary border-textPrimary/40", label: "READY", dot: "bg-accent" },
     error: { cls: "text-rose-300 border-rose-300/40", label: "ERROR", dot: "bg-rose-300" },
   } as const;
   const v = map[status];
@@ -56,7 +56,7 @@ export function DocumentPanel({ sessionId }: { sessionId: string }) {
             <StatusBadge status={d.status} />
             <button
               onClick={() => handleDelete(d.id)}
-              className="ml-1 opacity-0 group-hover:opacity-100 text-textMuted hover:text-white transition-opacity"
+              className="ml-1 opacity-0 group-hover:opacity-100 text-textMuted hover:text-textPrimary transition-opacity"
             >
               <X size={13} />
             </button>

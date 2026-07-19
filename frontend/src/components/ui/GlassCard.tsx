@@ -14,7 +14,7 @@ export function GlassCard({ className, hover, children, ...props }: PanelProps) 
     <motion.div
       className={cn(
         "relative bg-surface hairline p-6 transition-colors",
-        hover && "hover:border-white/30",
+        hover && "hover:border-textPrimary/30",
         className
       )}
       {...props}

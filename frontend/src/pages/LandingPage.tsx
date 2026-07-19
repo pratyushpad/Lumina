@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, ArrowUpRight, Command, FileSearch, Quote, Zap } from "lucide-react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
@@ -52,8 +52,7 @@ function Marquee() {
     <div className="overflow-hidden border-y border-line py-4">
       <div className="marquee-track flex gap-12 whitespace-nowrap text-2xl font-display font-bold tracking-tight3 text-textMuted">
         {[...items, ...items].map((t, i) => (
-          <span key={i} className="inline-flex items-center gap-12">
-            <span className="h-2 w-2 bg-accent" />
+          <span key={i} className="inline-flex items-center">
             {t}
           </span>
         ))}
@@ -68,11 +67,12 @@ export default function LandingPage() {
     target: heroRef,
     offset: ["start start", "end start"],
   });
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, -80]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const reduce = useReducedMotion();
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -80]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, reduce ? 1 : 0]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-white">
+    <div className="min-h-screen overflow-x-hidden bg-background text-textPrimary">
       <ScrollProgress />
 
       {/* Top bar */}
@@ -81,16 +81,16 @@ export default function LandingPage() {
           LUMINA<span className="text-accent">.</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-[11px] uppercase tracking-tight2 font-mono text-textSecondary">
-          <MagneticLink href="#features" className="hover:text-white transition-colors">
+          <MagneticLink href="#features" className="hover:text-textPrimary transition-colors">
             Features
           </MagneticLink>
-          <MagneticLink href="#how" className="hover:text-white transition-colors">
+          <MagneticLink href="#how" className="hover:text-textPrimary transition-colors">
             How it works
           </MagneticLink>
           <MagneticLink
             href="https://github.com"
             external
-            className="hover:text-white transition-colors"
+            className="hover:text-textPrimary transition-colors"
           >
             <span className="inline-flex items-center gap-1">
               Github <ArrowUpRight size={11} />
@@ -113,19 +113,11 @@ export default function LandingPage() {
             style={{ y: heroY, opacity: heroOpacity }}
             className="relative z-10 mx-auto w-full max-w-6xl"
           >
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 inline-flex items-center gap-2 hairline bg-card px-3 py-1.5 text-[10px] uppercase tracking-tight2 font-mono text-textSecondary"
-            >
-              <span className="h-1.5 w-1.5 bg-accent animate-pulse" />
-              v2.0 · Gemini 2.5 Flash · pgvector · hybrid BM25 + rerank
-            </motion.div>
 
             <h1 className="font-display text-[clamp(3rem,9vw,9rem)] font-bold leading-[0.92] tracking-tight3">
               <SplitText text="Talk to your" />
               <br />
-              <SplitText text="documents." stagger={0.07} />
+              <span className="text-accent"><SplitText text="documents." stagger={0.07} /></span>
             </h1>
 
             <motion.p
@@ -152,21 +144,8 @@ export default function LandingPage() {
               <Link to="/app">
                 <GradientButton variant="outline">Open Lumina</GradientButton>
               </Link>
-              <div className="ml-2 inline-flex items-center gap-2 text-[10px] uppercase tracking-tight2 font-mono text-textMuted">
-                <kbd className="hairline px-1.5 py-0.5 bg-card">
-                  <Command size={10} className="inline -mt-px" />K
-                </kbd>
-                <span>quick switch</span>
-              </div>
             </motion.div>
           </motion.div>
-
-        <div className="pointer-events-none absolute bottom-8 left-6 text-[10px] uppercase tracking-tight2 font-mono text-textMuted">
-          [00] HERO
-        </div>
-        <div className="pointer-events-none absolute bottom-8 right-6 text-[10px] uppercase tracking-tight2 font-mono text-textMuted">
-          SCROLL ↓
-        </div>
       </section>
 
       <Marquee />
@@ -178,23 +157,20 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mb-16 flex items-end justify-between flex-wrap gap-4"
+            className="mb-16"
           >
             <div>
-              <div className="text-[10px] uppercase tracking-tight2 text-textMuted font-mono">
-                [01] What it does
-              </div>
               <h2 className="mt-3 font-display text-5xl md:text-6xl font-bold tracking-tight3 max-w-2xl">
                 <SplitText text="Built for grounded answers." inView />
               </h2>
-            </div>
-            <div className="text-sm text-textSecondary max-w-sm">
-              Three things matter in a RAG system: how it indexes, how it retrieves, and how
-              it cites. Lumina does each well.
+              <p className="mt-4 max-w-xl text-sm text-textSecondary">
+                Three things matter in a RAG system: how it indexes, how it retrieves, and how
+                it cites. Lumina does each well.
+              </p>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 border border-line">
+          <div className="grid grid-cols-1 md:grid-cols-12 border border-line">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -203,14 +179,9 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.5 }}
                 whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
-                className={`p-8 ${i < features.length - 1 ? "md:border-r border-line" : ""}`}
+                className={`p-8 ${i === 0 ? "md:col-span-6 md:py-14" : "md:col-span-3"} ${i < features.length - 1 ? "md:border-r border-line" : ""}`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-tight2 font-mono text-textMuted">
-                    {f.n}
-                  </span>
-                  <f.icon size={18} className="text-accent" />
-                </div>
+                <f.icon size={18} className="text-accent" />
                 <h3 className="mt-8 font-display text-xl font-bold tracking-tight2">
                   {f.title}
                 </h3>
@@ -230,9 +201,6 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="mb-16"
           >
-            <div className="text-[10px] uppercase tracking-tight2 text-textMuted font-mono">
-              [02] Pipeline
-            </div>
             <h2 className="mt-3 font-display text-5xl md:text-6xl font-bold tracking-tight3">
               <SplitText text="Four stages." inView />
               <br />
@@ -249,12 +217,9 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
                 whileHover={{ x: 4 }}
-                className="grid grid-cols-12 items-center border-b border-line py-8 group transition-colors hover:bg-white/[0.015]"
+                className="grid grid-cols-12 items-center border-b border-line py-8 group transition-colors hover:bg-textPrimary/[0.03]"
               >
-                <span className="col-span-2 md:col-span-1 text-[10px] uppercase tracking-tight2 font-mono text-textMuted">
-                  {s.n}
-                </span>
-                <span className="col-span-4 md:col-span-3 font-display text-2xl md:text-3xl font-bold tracking-tight2 text-white">
+                <span className="col-span-5 md:col-span-4 font-display text-2xl md:text-3xl font-bold tracking-tight2 text-textPrimary">
                   {s.t}
                 </span>
                 <span className="col-span-6 md:col-span-7 text-sm text-textSecondary">
@@ -278,9 +243,6 @@ export default function LandingPage() {
           viewport={{ once: true }}
           className="mx-auto max-w-4xl text-center"
         >
-          <div className="text-[10px] uppercase tracking-tight2 text-textMuted font-mono">
-            [03] Begin
-          </div>
           <h2 className="mt-4 font-display text-6xl md:text-7xl font-bold tracking-tight3">
             <SplitText text="Drop a file." inView />
             <br />
@@ -288,7 +250,7 @@ export default function LandingPage() {
           </h2>
           <p className="mx-auto mt-6 max-w-lg text-textSecondary">
             No signup. Open source, self-hostable. The demo session comes pre-loaded with two
-            classic papers — a cited answer is one click away.
+            classic papers, so a cited answer is one click away.
           </p>
           <div className="mt-10 inline-flex flex-wrap justify-center gap-3">
             <Link to="/app?session=demo">
@@ -304,8 +266,8 @@ export default function LandingPage() {
       </section>
 
       <footer className="px-6 py-8 flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-tight2 font-mono text-textMuted">
-        <span>LUMINA · multimodal RAG · built with Gemini 2.5</span>
-        <span>v2.0</span>
+        <span>Lumina, an open-source multimodal RAG workbench</span>
+        <span>Self-hostable. No signup.</span>
       </footer>
     </div>
   );

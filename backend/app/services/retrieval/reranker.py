@@ -35,15 +35,26 @@ class Reranker:
         if not results:
             return []
         top_k = top_k or settings.TOP_K_RERANKED
+        fused_order = list(results)  # upstream hybrid/RRF ranking, best-first
         pairs = [(query, r.text) for r in results]
         scores = self.model.predict(pairs)
         for r, s in zip(results, scores):
-            r.relevance_score = float(s)
-        results.sort(key=lambda r: r.relevance_score, reverse=True)
-        # Always keep top_k. Only drop tail results whose sigmoid-normalized score is
-        # below a soft noise floor (0.1 ~= raw score -2.2). This avoids returning an
-        # empty context when raw logits are low across the board.
-        top = results[:top_k]
-        for r in top:
-            r.relevance_score = _sigmoid(r.relevance_score)
+            r.relevance_score = _sigmoid(float(s))
+        ranked = sorted(results, key=lambda r: r.relevance_score, reverse=True)
+        # Cross-encoders can zero out every pair on paraphrase/typo queries
+        # ("salary" vs a chunk saying "compensation"). When the model is uniformly
+        # unconfident, its ordering is noise — promoting arbitrary chunks and
+        # starving generation of the right context. Fall back to the fused
+        # retrieval order instead of trusting a signal that has nothing to say.
+        if not ranked or ranked[0].relevance_score < settings.MIN_RERANK_SCORE:
+            logger.info(
+                "reranker unconfident (max %.3f < %.2f); keeping fused retrieval order",
+                ranked[0].relevance_score if ranked else 0.0,
+                settings.MIN_RERANK_SCORE,
+            )
+            return fused_order[:top_k]
+        # Confident path: keep top_k, dropping tail results below a soft noise
+        # floor (0.1 ~= raw score -2.2) so context stays clean without ever
+        # returning empty.
+        top = ranked[:top_k]
         return [r for r in top if r.relevance_score >= 0.1] or top[:1]

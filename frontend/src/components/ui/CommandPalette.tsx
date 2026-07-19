@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useSessionStore } from "@/stores/sessionStore";
+import { toast } from "@/stores/toastStore";
 
 type CommandKind = "action" | "session";
 
@@ -50,11 +51,18 @@ export function CommandPalette() {
   const close = () => setOpen(false);
 
   const newSessionAction = async () => {
-    const s = await api.createSession("New Session");
-    addSession(s);
-    setActive(s.id);
-    navigate("/app");
     close();
+    try {
+      const s = await api.createSession("New Session");
+      addSession(s);
+      setActive(s.id);
+      navigate("/app");
+    } catch {
+      toast.error(
+        "Could not create session",
+        "The server may be waking up. Give it up to a minute and try again."
+      );
+    }
   };
 
   const all: Command[] = useMemo(() => {
@@ -138,7 +146,7 @@ export function CommandPalette() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
-          className="fixed inset-0 z-[90] flex items-start justify-center bg-black/70 backdrop-blur-sm pt-[18vh] px-4"
+          className="fixed inset-0 z-[90] flex items-start justify-center bg-textPrimary/40 backdrop-blur-sm pt-[18vh] px-4"
           onClick={close}
         >
           <motion.div
@@ -157,7 +165,7 @@ export function CommandPalette() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKey}
                 placeholder="Search sessions or run a command…"
-                className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-textMuted"
+                className="flex-1 bg-transparent text-sm text-textPrimary outline-none placeholder:text-textMuted"
               />
               <kbd className="hairline px-1.5 py-0.5 text-[10px] font-mono uppercase text-textMuted">
                 Esc
@@ -178,7 +186,7 @@ export function CommandPalette() {
                     onMouseEnter={() => setCursor(i)}
                     onClick={c.onSelect}
                     className={`group flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors ${
-                      active ? "bg-card text-white" : "text-textSecondary hover:bg-card/60"
+                      active ? "bg-card text-textPrimary" : "text-textSecondary hover:bg-card/60"
                     }`}
                   >
                     <Icon size={14} className={active ? "text-accent" : "text-textMuted"} />

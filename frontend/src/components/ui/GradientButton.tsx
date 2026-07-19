@@ -1,4 +1,4 @@
-import { motion, HTMLMotionProps, useMotionValue, useSpring } from "framer-motion";
+import { motion, HTMLMotionProps, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { useRef } from "react";
 import { cn } from "@/lib/cn";
 
@@ -9,10 +9,10 @@ interface SharpButtonProps extends HTMLMotionProps<"button"> {
 }
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-white text-black hover:bg-textPrimary/90",
+  primary: "bg-textPrimary text-background hover:bg-textPrimary/90",
   outline:
-    "bg-transparent text-white border border-lineStrong hover:border-white hover:bg-white/[0.04]",
-  ghost: "bg-transparent text-textSecondary hover:text-white hover:bg-white/[0.04]",
+    "bg-transparent text-textPrimary border border-lineStrong hover:border-textPrimary hover:bg-textPrimary/[0.05]",
+  ghost: "bg-transparent text-textSecondary hover:text-textPrimary hover:bg-textPrimary/[0.05]",
 };
 
 /**
@@ -32,9 +32,10 @@ export function GradientButton({
   const sx = useSpring(x, { stiffness: 200, damping: 18 });
   const sy = useSpring(y, { stiffness: 200, damping: 18 });
 
+  const reduce = useReducedMotion();
   const onMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || reduce) return;
     const r = el.getBoundingClientRect();
     const dx = e.clientX - (r.left + r.width / 2);
     const dy = e.clientY - (r.top + r.height / 2);

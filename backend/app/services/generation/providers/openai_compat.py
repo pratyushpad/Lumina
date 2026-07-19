@@ -26,6 +26,13 @@ class OpenAICompatProvider(LLMProvider):
         self.base_url = (base_url or settings.LOCAL_LLM_BASE_URL).rstrip("/")
         self.model = model or settings.LOCAL_LLM_MODEL
         self.timeout = httpx.Timeout(settings.LOCAL_LLM_TIMEOUT_S, connect=3.0)
+        # Optional Bearer auth: lets this provider target hosted OpenAI-compatible
+        # endpoints (Groq, Cerebras, Mistral, …) — Ollama/vLLM ignore a missing key.
+        self.headers = (
+            {"Authorization": f"Bearer {settings.LOCAL_LLM_API_KEY}"}
+            if settings.LOCAL_LLM_API_KEY
+            else {}
+        )
 
     def _payload(self, system: str, user: str, stream: bool) -> dict:
         payload = {
@@ -46,7 +53,9 @@ class OpenAICompatProvider(LLMProvider):
         t0 = time.perf_counter()
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
-                f"{self.base_url}/chat/completions", json=self._payload(system, user, False)
+                f"{self.base_url}/chat/completions",
+                json=self._payload(system, user, False),
+                headers=self.headers,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -72,6 +81,7 @@ class OpenAICompatProvider(LLMProvider):
                 "POST",
                 f"{self.base_url}/chat/completions",
                 json=self._payload(system, user, True),
+                headers=self.headers,
             ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
@@ -104,7 +114,7 @@ class OpenAICompatProvider(LLMProvider):
     async def health(self) -> bool:
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(2.0)) as client:
-                resp = await client.get(f"{self.base_url}/models")
+                resp = await client.get(f"{self.base_url}/models", headers=self.headers)
                 return resp.status_code == 200
         except Exception:
             return False

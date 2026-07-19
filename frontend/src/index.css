@@ -5,42 +5,47 @@
 html, body, #root { height: 100%; }
 
 body {
-  background-color: #000;
-  color: #fff;
+  background-color: #F6F4EE;
+  color: #201E19;
   font-feature-settings: "ss01", "cv11";
 }
 
-::selection { background: #8B5CF6; color: #fff; }
+::selection { background: #1D4ED8; color: #F6F4EE; }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+::-webkit-scrollbar-thumb { background: rgba(32,30,25,0.15); }
+::-webkit-scrollbar-thumb:hover { background: rgba(32,30,25,0.30); }
+
+:focus-visible {
+  outline: 3px solid #1D4ED8;
+  outline-offset: 2px;
+}
 
 /* Sharp dividers and edges */
 .hairline {
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(32,30,25,0.12);
 }
 .hairline-strong {
-  border: 1px solid rgba(255,255,255,0.16);
+  border: 1px solid rgba(32,30,25,0.28);
 }
 
 /* Accent underline used for active states */
 .accent-bar {
-  box-shadow: inset 0 -2px 0 0 #8B5CF6;
+  box-shadow: inset 0 -2px 0 0 #1D4ED8;
 }
 
-/* Subtle noise texture (CSS only, no asset) */
+/* Paper grain: faint print texture on the light ground */
 .noise::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.04;
-  mix-blend-mode: overlay;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
   background-image:
-    radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px),
-    radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
+    radial-gradient(rgba(32,30,25,0.5) 1px, transparent 1px),
+    radial-gradient(rgba(32,30,25,0.35) 1px, transparent 1px);
   background-size: 3px 3px, 5px 5px;
   background-position: 0 0, 1px 2px;
 }
@@ -52,4 +57,17 @@ body {
 }
 .marquee-track {
   animation: marquee 30s linear infinite;
+}
+
+/* Reduced motion: marquee becomes a static wrapped wall, everything CSS-driven stops */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    flex-wrap: wrap;
+    white-space: normal;
+    width: 100%;
+    row-gap: 0.75rem;
+  }
+  .marquee-dup { display: none; }
+  html { scroll-behavior: auto; }
 }

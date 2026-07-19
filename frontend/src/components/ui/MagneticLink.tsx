@@ -1,4 +1,4 @@
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { useRef, type ReactNode } from "react";
 
 interface MagneticLinkProps {
@@ -24,9 +24,10 @@ export function MagneticLink({
   const sx = useSpring(x, { stiffness: 250, damping: 18 });
   const sy = useSpring(y, { stiffness: 250, damping: 18 });
 
+  const reduce = useReducedMotion();
   const onMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || reduce) return;
     const r = el.getBoundingClientRect();
     x.set((e.clientX - (r.left + r.width / 2)) * strength);
     y.set((e.clientY - (r.top + r.height / 2)) * strength);
@@ -50,7 +51,7 @@ export function MagneticLink({
     >
       <span className="relative">
         {children}
-        <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-white transition-transform duration-300 ease-out group-hover:scale-x-100" />
+        <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-accent transition-transform duration-300 ease-out group-hover:scale-x-100" />
       </span>
     </motion.a>
   );

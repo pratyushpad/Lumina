@@ -28,3 +28,5 @@ eval/runs/
 .DS_Store
 .idea/
 .vscode/
+
+node-compile-cache/

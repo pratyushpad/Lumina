@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Citation } from "@/types";
 
 function scoreColor(score: number) {
-  if (score >= 0.8) return "bg-white";
+  if (score >= 0.8) return "bg-accent";
   if (score >= 0.5) return "bg-textSecondary";
   return "bg-textMuted";
 }
@@ -17,10 +17,10 @@ export function CitationChip({ citation }: { citation: Citation }) {
       <motion.button
         whileHover={{ y: -1 }}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 hairline bg-card px-3 py-1.5 text-[11px] uppercase tracking-tight2 text-textSecondary hover:text-white hover:border-white/40 transition-colors"
+        className="inline-flex items-center gap-2 hairline bg-card px-3 py-1.5 text-[11px] uppercase tracking-tight2 text-textSecondary hover:text-textPrimary hover:border-textPrimary/40 transition-colors"
       >
         <Icon size={11} />
-        <span className="font-mono normal-case text-white truncate max-w-[180px]">
+        <span className="font-mono normal-case text-textPrimary truncate max-w-[180px]">
           {citation.filename}
         </span>
         {citation.page_num != null && <span className="font-mono">p.{citation.page_num}</span>}

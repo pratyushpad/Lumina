@@ -194,18 +194,36 @@ async def eval_refusal(items: list[dict]) -> dict:
     overrides = dict(ABLATIONS)[GENERATION_CONFIG]
     pipeline = RetrievalPipeline(RetrievalConfig(top_k_candidates=50, top_k_final=5, **overrides))
 
-    scored: list[tuple[bool, float]] = []  # (answerable, top_rerank_score)
+    from app.config import settings
+    from app.services.embedding.embedder import EmbeddingService
+
+    embedder = EmbeddingService.get()
+
+    # (answerable, top_rerank_score, top_biencoder_sim) — mirrors the production
+    # two-stage gate in app/services/guardrails/confidence.py: refuse only when
+    # the rerank score is below threshold AND the bi-encoder second chance also
+    # fails (max cosine sim over the top candidates < MIN_BIENCODER_SIM).
+    scored: list[tuple[bool, float, float]] = []
     for item in items:
         results = await pipeline.run(item["question"], _doc_ids())
         top = max((r.relevance_score for r in results), default=0.0)
-        scored.append((bool(item.get("relevant_chunk_ids")), top))
+        qvec = embedder.embed_query(item["question"])
+        sims = []
+        for r in results[:5]:
+            cvec = embedder.embed_query(r.text)
+            num = sum(x * y for x, y in zip(qvec, cvec))
+            da = sum(x * x for x in qvec) ** 0.5
+            db = sum(y * y for y in cvec) ** 0.5
+            sims.append(num / (da * db) if da and db else 0.0)
+        scored.append((bool(item.get("relevant_chunk_ids")), top, max(sims, default=0.0)))
 
-    n_ans = sum(1 for a, _ in scored if a)
-    n_una = sum(1 for a, _ in scored if not a)
+    n_ans = sum(1 for a, *_ in scored if a)
+    n_una = sum(1 for a, *_ in scored if not a)
+    bi_t = settings.MIN_BIENCODER_SIM
     sweep = []
     for t in (0.15, 0.25, 0.35, 0.5, 0.65, 0.8):
-        false_refusals = sum(1 for a, s in scored if a and s < t)
-        false_answers = sum(1 for a, s in scored if not a and s >= t)
+        false_refusals = sum(1 for a, s, sim in scored if a and s < t and sim < bi_t)
+        false_answers = sum(1 for a, s, sim in scored if not a and (s >= t or sim >= bi_t))
         sweep.append(
             {"threshold": t,
              "false_refusal_rate": false_refusals / n_ans if n_ans else 0.0,

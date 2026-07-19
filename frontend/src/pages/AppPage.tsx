@@ -60,7 +60,7 @@ export default function AppPage() {
   useDocumentStatusPolling(activeSessionId);
 
   return (
-    <div className="flex h-screen bg-background text-white">
+    <div className="flex h-screen bg-background text-textPrimary">
       <Sidebar />
       <main className="flex flex-1 flex-col overflow-hidden">
         {!activeSessionId ? (

@@ -78,7 +78,7 @@ async def chat(request: Request, session_id: str, body: ChatRequest, db: AsyncSe
     tracer = Tracer(body.query, session_id=session_id)
     chunks, retrieval_ms = await _run_retrieval(body.query, document_ids, tracer)
 
-    if should_refuse(chunks):
+    if should_refuse(chunks, body.query):
         top = max((c.relevance_score for c in chunks), default=0.0)
         tracer.stage("refusal", 0, {"top_rerank_score": round(top, 4),
                                     "threshold": settings.MIN_RERANK_SCORE})
@@ -159,7 +159,7 @@ async def chat_stream(request: Request, session_id: str, query: str):
             tracer = Tracer(query, session_id=session_id)
             chunks, retrieval_ms = await _run_retrieval(query, document_ids, tracer)
 
-            if should_refuse(chunks):
+            if should_refuse(chunks, query):
                 top = max((c.relevance_score for c in chunks), default=0.0)
                 tracer.stage("refusal", 0, {"top_rerank_score": round(top, 4),
                                             "threshold": settings.MIN_RERANK_SCORE})
