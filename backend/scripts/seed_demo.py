@@ -40,7 +40,23 @@ async def demo_already_seeded() -> bool:
     return True
 
 
+async def _clear_demo_history() -> None:
+    """The public demo session is shared by every visitor; wipe its chat history
+    on boot so recruiters always land on the clean suggested-questions state."""
+    from sqlalchemy import delete
+
+    from app.database import AsyncSessionLocal
+    from app.models import Message
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(delete(Message).where(Message.session_id == DEMO_SESSION_ID))
+        await db.commit()
+        if result.rowcount:
+            logger.info("Cleared %d messages from the demo session", result.rowcount)
+
+
 async def seed_demo(force: bool = False) -> None:
+    await _clear_demo_history()
     if not force and await demo_already_seeded():
         logger.info("Demo session already seeded — skipping")
         return
