@@ -144,6 +144,7 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
         # represented) to stay inside the free-tier daily request quota.
         step = max(1, len(answerable) // limit)
         answerable = answerable[::step][:limit]
+    gen_models: set[str] = set()  # actual provider:model that served each answer
     per_query = []
     for i, item in enumerate(answerable):
         q, ref = item["question"], item["reference_answer"]
@@ -152,9 +153,11 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
         context = "\n\n".join(context_texts)
 
         try:
-            answer, _ = await llm.generate(
+            res = await llm.generate_result(
                 builder.build_system_prompt(), builder.build_user_prompt(q, chunks)
             )
+            answer = res.text
+            gen_models.add(f"{res.provider}:{res.model}")
         except Exception as e:
             logger.warning("generation failed on %s: %s — skipping item", item["qid"], e)
             continue
@@ -180,7 +183,7 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
         "metrics": agg,
         "n": len(per_query),
         "n_total_answerable": len(answerable),
-        "generator_model": settings.LLM_MODEL,
+        "generator_model": ", ".join(sorted(gen_models)) or settings.LLM_MODEL,
         "judge_model": judge_model or settings.LLM_MODEL,
     }
 

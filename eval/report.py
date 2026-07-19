@@ -83,10 +83,13 @@ def write_report(run: dict, dest: Path) -> None:
             f"| Context precision | {_fmt(m.get('context_precision', 0.0))} |",
             f"| Context recall | {_fmt(m.get('context_recall', 0.0))} |",
             "",
-            "> **Caveat — self-evaluation bias**: the generator and the judge are both "
-            "Gemini. Same-family judging is known to inflate scores; treat absolute "
-            "values with skepticism and read the retrieval ablation deltas as the "
-            "primary signal. See `MODEL_CARD.md`.",
+            "> **Caveat — LLM-judge bias**: scores come from an LLM judge. Cross-family "
+            "judging (a Gemini judge grading Llama answers) avoids same-family "
+            "self-preference, but judge bias remains; treat absolute values with "
+            "skepticism and read the retrieval ablation deltas as the primary signal. "
+            "When n is below the attempted count, the missing items hit free-tier "
+            "provider rate limits mid-run and were skipped in dataset order — not "
+            "selected. See `MODEL_CARD.md`.",
         ]
 
     lines += [
