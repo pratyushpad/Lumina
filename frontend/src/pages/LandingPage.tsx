@@ -88,7 +88,7 @@ export default function LandingPage() {
             How it works
           </MagneticLink>
           <MagneticLink
-            href="https://github.com/pratyushpad/lumina"
+            href="https://github.com/pratyushpad/Lumina"
             external
             className="hover:text-textPrimary transition-colors"
           >

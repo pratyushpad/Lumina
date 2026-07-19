@@ -1,6 +1,6 @@
 # Lumina — Production-Shaped Multimodal RAG
 
-[![CI](https://github.com/pratyushpad/lumina/actions/workflows/ci.yml/badge.svg)](https://github.com/pratyushpad/lumina/actions/workflows/ci.yml)
+[![CI](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml/badge.svg)](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml)
 
 **Live demo: [lumina-rag-two.vercel.app](https://lumina-rag-two.vercel.app)** — click
 *Try the live demo* for a pre-seeded session over two classic papers; a cited answer
@@ -52,7 +52,7 @@ Measured on the frozen 52-question eval set over a documented 4-document corpus
                  PromptBuilder (+ injection-scan delimiters)
                           │
                           ▼
-        ProviderRouter: local Ollama/vLLM (GPU box) ──fallback──► Gemini
+        ProviderRouter: OpenAI-compat (Groq / Ollama / vLLM) ──fallback──► Gemini
                           │  SSE stream + provider/tokens-per-sec meta
                           ▼
              React UI (citations, provider badge, per-message trace inspector)
@@ -101,6 +101,17 @@ Health checks are cached (30 s TTL); if the box is off, requests fall back to
 Gemini automatically, and the UI badge + trace show which provider actually served
 each answer, with measured tokens/sec.
 
+The same provider slot speaks to any hosted OpenAI-compatible endpoint — the
+live deployment runs Groq (`llama-3.3-70b-versatile`) as primary with Gemini
+fallback, all free-tier:
+
+```bash
+LLM_PROVIDER_ORDER=local,gemini
+LOCAL_LLM_BASE_URL=https://api.groq.com/openai/v1
+LOCAL_LLM_MODEL=llama-3.3-70b-versatile
+LOCAL_LLM_API_KEY=gsk_...
+```
+
 ## Evaluation
 
 ```bash
@@ -121,9 +132,12 @@ message opens the pipeline inspector; via API it's `GET /api/traces/{message_id}
 
 ## Guardrails
 
-- **Refusal**: if the top rerank score is below `MIN_RERANK_SCORE`, Lumina answers
-  "not in your documents" without calling the LLM (threshold calibrated in
-  `docs/eval.md`).
+- **Refusal (two-stage)**: if the top rerank score is below `MIN_RERANK_SCORE`,
+  a bi-encoder second chance re-checks the top candidates (cosine sim vs
+  `MIN_BIENCODER_SIM`) — catching honest paraphrases the cross-encoder
+  under-scores (query "salary" vs a chunk saying "compensation"). Only when both
+  signals are weak does Lumina answer "not in your documents" without calling the
+  LLM (sweep in `docs/eval.md` models the two-stage gate exactly).
 - **Prompt injection**: retrieved chunks matching injection heuristics are wrapped
   in warning delimiters before entering the prompt.
 - **PII**: optional regex scrub (emails/phones/SSNs/cards) at ingest via
@@ -142,8 +156,10 @@ message opens the pipeline inspector; via API it's `GET /api/traces/{message_id}
   in memory; at scale, switch to FTS-prefilter → BM25 rerank or a Postgres BM25
   extension (ParadeDB `pg_search`). The `fts` sparse mode (`ts_rank_cd`, not true
   BM25) is already wired as a single-SQL alternative.
-- Generation metrics use Gemini to judge Gemini — self-evaluation bias inflates
-  absolute scores. See `MODEL_CARD.md`.
+- Generation metrics use an LLM judge (Gemini flash-lite grading Llama-3.3-70B
+  answers — cross-family, which reduces but does not eliminate judge bias).
+  Absolute scores should still be read with skepticism; the retrieval ablation
+  deltas are the primary signal. See `MODEL_CARD.md`.
 - The eval questions share vocabulary with their source chunks, which favors
   lexical (BM25) retrieval; dense retrieval would fare relatively better on
   paraphrased queries.
