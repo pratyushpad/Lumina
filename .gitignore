@@ -15,6 +15,8 @@ venv/
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
+.eslintcache
 
 # App storage (uploads, processed images, DBs)
 backend/storage/

@@ -1,5 +1,5 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Command, FileSearch, Quote, Zap } from "lucide-react";
+import { ArrowRight, ArrowUpRight, FileSearch, Quote, Zap } from "lucide-react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { GradientButton } from "@/components/ui/GradientButton";

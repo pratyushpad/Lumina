@@ -20,32 +20,40 @@ interface Command {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const sessions = useSessionStore((s) => s.sessions);
   const setActive = useSessionStore((s) => s.setActiveSession);
   const addSession = useSessionStore((s) => s.addSession);
 
-  // Open with ⌘K / Ctrl+K, close with Esc
+  // Open with ⌘K / Ctrl+K, close with Esc. Clearing the search on open happens
+  // here rather than in an effect so opening costs a single render.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
       if (isMod && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((v) => !v);
+        if (open) {
+          setOpen(false);
+        } else {
+          setQuery("");
+          setCursor(0);
+          setOpen(true);
+        }
       } else if (e.key === "Escape") {
         setOpen(false);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [open]);
 
+  // DOM-only: focus the input once the palette has painted.
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setTimeout(() => inputRef.current?.focus(), 30);
-    }
+    if (!open) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 30);
+    return () => clearTimeout(t);
   }, [open]);
 
   const close = () => setOpen(false);
@@ -122,9 +130,6 @@ export function CommandPalette() {
     );
   }, [all, query]);
 
-  const [cursor, setCursor] = useState(0);
-  useEffect(() => setCursor(0), [query, open]);
-
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -162,7 +167,10 @@ export function CommandPalette() {
               <input
                 ref={inputRef}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setCursor(0); // a new filter list invalidates the old highlight
+                }}
                 onKeyDown={onKey}
                 placeholder="Search sessions or run a command…"
                 className="flex-1 bg-transparent text-sm text-textPrimary outline-none placeholder:text-textMuted"
