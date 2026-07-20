@@ -2,18 +2,19 @@
 
 [![CI](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml/badge.svg)](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml)
 
-**Live demo: [lumina-rag-two.vercel.app](https://lumina-rag-two.vercel.app)** — click
+**Live demo: [luminarag.vercel.app](https://luminarag.vercel.app)** — click
 *Try the live demo* for a pre-seeded session over two classic papers; a cited answer
 is one click away. (API: [prat20-lumina-api.hf.space](https://prat20-lumina-api.hf.space/docs),
 free-tier hosted — first answer of the day may take a few extra seconds.)
-
-![Lumina demo — suggested question to cited answer](docs/demo.gif)
 
 Upload PDFs / images / text into isolated sessions, then chat with cited, grounded
 answers. Built to be **measured, not vibed**: hybrid BM25+dense retrieval with RRF
 fusion, a cross-encoder reranker, a local-GPU/hosted LLM provider abstraction,
 per-query pipeline tracing, confidence-based refusal, and a frozen eval set with a
 per-component ablation table.
+
+Sessions are private to your browser by default; sign in with Google (optional) to
+save them to an account and pick them up from another device.
 
 ## Results (10-second version)
 
@@ -84,12 +85,13 @@ make dev-backend                       # migrations run automatically at startup
 cd frontend && npm install && npm run dev
 ```
 
-## Local LLM serving (RTX 5060 box)
+## Local LLM serving (optional — any OpenAI-compatible endpoint)
 
-The `local` provider speaks the OpenAI-compatible API, so Ollama and vLLM both work:
+The `local` provider speaks the OpenAI-compatible API, so Ollama and vLLM both work,
+pointed at whatever machine has a GPU:
 
 ```bash
-# on the GPU box (Windows/Linux)
+# on the machine serving the model (Windows/Linux)
 ollama pull qwen2.5:7b-instruct-q4_K_M
 # Windows: set OLLAMA_HOST=0.0.0.0 and allow port 11434 through the firewall
 ```
@@ -152,8 +154,45 @@ message opens the pipeline inspector; via API it's `GET /api/traces/{message_id}
 
 - `POST /api/sessions/` · `GET /api/sessions/` · `PATCH /api/sessions/{id}` · `DELETE /api/sessions/{id}`
 - `POST /api/documents/upload` (multipart) · `GET /api/documents/session/{id}` · `GET /api/documents/{id}/status` · `DELETE /api/documents/{id}`
-- `POST /api/chat/{session_id}` · `GET /api/chat/{session_id}/stream?query=…` (SSE: `citations`, `token`, `meta`, `refusal`, `done`) · `GET /api/chat/{session_id}/history`
+- `POST /api/chat/{session_id}` · `GET /api/chat/{session_id}/stream?query=…` (SSE: `citations`, `token`, `meta`, `refusal`, `capacity`, `done`) · `GET /api/chat/{session_id}/history`
+- `POST /api/auth/google/exchange` · `GET /api/auth/me` · `POST /api/auth/claim` (present only when sign-in is configured)
 - `GET /api/traces/{message_id}` · `GET /health`
+
+Identity travels in headers, never the URL: `X-Owner-Token` (a random per-browser
+capability) and, when signed in, `Authorization: Bearer <jwt>`.
+
+## Accounts, privacy & data
+
+- **No analytics, no tracking, no third-party scripts.** The frontend ships nothing
+  that phones home; there is no telemetry anywhere in the stack.
+- **Private by default.** Every session is scoped to an opaque per-browser token
+  (`X-Owner-Token`, generated locally, never in a URL). One visitor cannot list,
+  read, or mutate another's sessions — a session that isn't yours returns 404, not
+  403, so its existence isn't even confirmable. The shared demo library is
+  read-only, and each visitor sees only their own demo conversation.
+- **Sign-in is optional** (Google, self-rolled OAuth). It exists only to save your
+  sessions to an account so they follow you across devices; signing in adopts the
+  sessions you already made in that browser. The app is fully usable signed out.
+  The session token is a short-lived JWT in `localStorage` (Bearer header, not a
+  cookie — the SPA and API are different sites). No Google tokens are stored.
+- **Deletion is real and complete.** Deleting a document removes its vectors and
+  BM25 entries and its files on disk; deleting a session cascades to its documents,
+  chunks, messages, traces, and uploaded files. Nothing is soft-deleted or retained.
+
+## Free-tier capacity (the honest version)
+
+Hosting is $0, so the LLM providers are free tiers with hard daily quotas. Rather
+than 503 when a quota is spent, Lumina counts per-provider usage per UTC day, skips
+an exhausted provider, and shows a calm "capacity reached, resets 00:00 UTC" banner
+only when every provider is spent. A small concurrency gate turns a burst into a
+short wait instead of a wave of rejections.
+
+Concretely: the free tiers realistically support **tens** of unique generations a
+day. It stretches to **hundreds of demo prompts** because the demo corpus and its
+suggested questions are fixed, so repeat demo questions replay a cached answer at
+**zero token cost** (labelled `cached` in the UI, no invented tokens/sec), and
+off-topic questions are refused before any LLM call. Your own uploaded-document
+questions always hit a real provider and count against the day's quota.
 
 ## Honest limitations
 
