@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +16,6 @@ from app.schemas.session import (
 from app.services.retrieval.sparse import BM25Index
 from app.services.vectorstore.pgvector import PgVectorStore
 from app.utils.file_handler import cleanup_document_files, rmtree_safe
-import os
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 

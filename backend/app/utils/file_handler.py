@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
+import anyio
 from fastapi import UploadFile
 
 
@@ -26,12 +27,15 @@ async def save_upload_file(upload_file: UploadFile, destination: str) -> int:
     Path(destination).parent.mkdir(parents=True, exist_ok=True)
     bytes_written = 0
     chunk_size = 1024 * 1024
-    with open(destination, "wb") as out:
+    # Async file IO: writing a multi-MB upload synchronously would block the
+    # event loop, stalling every concurrent SSE stream on the single-worker
+    # deployment for the duration of the write.
+    async with await anyio.open_file(destination, "wb") as out:
         while True:
             chunk = await upload_file.read(chunk_size)
             if not chunk:
                 break
-            out.write(chunk)
+            await out.write(chunk)
             bytes_written += len(chunk)
     return bytes_written
 

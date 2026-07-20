@@ -1,7 +1,7 @@
 """Provider interface for LLM generation (local GPU box or hosted API)."""
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from typing import AsyncGenerator, Union
 
 
 @dataclass
@@ -26,7 +26,7 @@ class GenResult:
 
 
 # Streaming yields str tokens, then exactly one final GenResult with timing/usage.
-StreamEvent = Union[str, GenResult]
+StreamEvent = str | GenResult
 
 
 class LLMProvider(ABC):

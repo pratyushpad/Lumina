@@ -1,0 +1,7 @@
+# Dev/CI only — the runtime images install requirements.txt alone so test and
+# lint tooling never ships to production.
+-r requirements.txt
+
+pytest==8.3.3
+pytest-asyncio==0.24.0
+ruff==0.15.22

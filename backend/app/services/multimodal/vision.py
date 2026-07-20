@@ -1,4 +1,5 @@
 """Gemini vision: describe images for multimodal retrieval."""
+import base64
 import logging
 from typing import Optional
 
@@ -8,7 +9,6 @@ from google.genai import types
 from app.config import settings
 from app.services.retrieval.types import RetrievalResult
 from app.utils.image_utils import encode_image_base64
-import base64
 
 logger = logging.getLogger("lumina.vision")
 

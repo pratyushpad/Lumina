@@ -6,10 +6,9 @@ silently disables limiting. Key on the first X-Forwarded-For hop when present
 (always set by the platform proxy in prod); fall back to the socket address
 for direct/local access.
 """
-from starlette.requests import Request
-
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from starlette.requests import Request
 
 from app.config import settings
 

@@ -1,11 +1,10 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
 
 class SessionCreate(BaseModel):
-    name: Optional[str] = "New Session"
+    name: str | None = "New Session"
 
 
 class SessionRename(BaseModel):

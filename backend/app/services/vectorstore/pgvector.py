@@ -5,7 +5,6 @@ from typing import Optional
 from sqlalchemy import bindparam, delete, func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.chunk import Chunk
 from app.services.ingestion.chunker import ChunkData
@@ -105,7 +104,8 @@ class PgVectorStore:
                 "text": c.text.replace("\x00", ""),
                 "embedding": emb,
             }
-            for c, emb in zip(chunks, embeddings)
+            # strict: a length mismatch here would silently drop chunks
+            for c, emb in zip(chunks, embeddings, strict=True)
         ]
         async with AsyncSessionLocal() as db:
             batch = 200

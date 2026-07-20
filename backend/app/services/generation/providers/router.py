@@ -6,7 +6,7 @@ next provider in the order.
 """
 import logging
 import time
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from app.config import settings
 from app.services.generation.providers.base import GenResult, LLMProvider, StreamEvent

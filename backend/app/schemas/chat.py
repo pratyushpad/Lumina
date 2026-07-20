@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,11 +13,11 @@ class Citation(BaseModel):
     chunk_id: str
     document_id: str
     filename: str
-    page_num: Optional[int] = None
+    page_num: int | None = None
     chunk_text: str
     relevance_score: float
     has_image: bool = False
-    image_path: Optional[str] = None
+    image_path: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -37,8 +37,8 @@ class MessageResponse(BaseModel):
     id: str
     role: str
     content: str
-    citations: Optional[list[Citation]] = None
-    model_used: Optional[str] = None
+    citations: list[Citation] | None = None
+    model_used: str | None = None
     created_at: datetime
 
 

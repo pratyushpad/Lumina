@@ -6,8 +6,9 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _upgrade_head_sync() -> None:
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))

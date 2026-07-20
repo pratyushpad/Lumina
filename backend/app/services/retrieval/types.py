@@ -1,6 +1,5 @@
 """Shared retrieval data types (kept free of any vector-store implementation)."""
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -12,6 +11,6 @@ class RetrievalResult:
     filename: str
     distance: float
     has_associated_image: bool = False
-    image_path: Optional[str] = None
+    image_path: str | None = None
     relevance_score: float = 0.0
     block_type: str = "text"

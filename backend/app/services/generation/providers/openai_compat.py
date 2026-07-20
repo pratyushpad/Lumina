@@ -8,7 +8,7 @@ timestamps and the backend's reported usage.
 import json
 import logging
 import time
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 
 import httpx
 
@@ -22,7 +22,7 @@ logger = logging.getLogger("lumina.providers.local")
 class OpenAICompatProvider(LLMProvider):
     name = "local"
 
-    def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, base_url: str | None = None, model: str | None = None):
         self.base_url = (base_url or settings.LOCAL_LLM_BASE_URL).rstrip("/")
         self.model = model or settings.LOCAL_LLM_MODEL
         self.timeout = httpx.Timeout(settings.LOCAL_LLM_TIMEOUT_S, connect=3.0)

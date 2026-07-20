@@ -29,7 +29,7 @@ _SECOND_CHANCE_TOP_N = 5
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
-    num = sum(x * y for x, y in zip(a, b))
+    num = sum(x * y for x, y in zip(a, b, strict=True))
     da = sum(x * x for x in a) ** 0.5
     db = sum(y * y for y in b) ** 0.5
     return num / (da * db) if da and db else 0.0

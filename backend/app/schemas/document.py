@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -9,7 +8,7 @@ class DocumentUploadResponse(BaseModel):
     filename: str
     status: str
     num_chunks: int = 0
-    num_pages: Optional[int] = None
+    num_pages: int | None = None
     has_images: bool = False
     message: str
 
@@ -31,7 +30,7 @@ class DocumentStatusResponse(BaseModel):
     document_id: str
     status: str
     num_chunks: int
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class DocumentDeleteResponse(BaseModel):

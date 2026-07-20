@@ -6,16 +6,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi import _rate_limit_exceeded_handler
 
 from app.config import settings
 from app.middleware.error_handler import register_error_handlers
 from app.middleware.rate_limit import limiter
 from app.migrations import run_migrations
-from app.routers import chat, config as config_router, documents, health, sessions, traces
+from app.routers import chat, documents, health, runtime_config, sessions, traces
 from app.services.embedding.embedder import EmbeddingService
 from app.services.retrieval.reranker import Reranker
 from app.services.vectorstore.pgvector import PgVectorStore
@@ -52,7 +51,7 @@ async def lifespan(app: FastAPI):
         ],
     )
     if settings.SEED_DEMO_ON_STARTUP:
-        from scripts.seed_demo import seed_demo
+        from app.services.bootstrap import seed_demo
 
         # Background task: seeding (first boot only) must not delay /health.
         seed_task = asyncio.create_task(seed_demo())
@@ -83,7 +82,7 @@ app.add_middleware(
 register_error_handlers(app)
 
 app.include_router(health.router)
-app.include_router(config_router.router)
+app.include_router(runtime_config.router)
 app.include_router(sessions.router)
 app.include_router(documents.router)
 app.include_router(chat.router)

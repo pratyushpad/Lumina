@@ -6,7 +6,7 @@ When a Tracer is supplied, each stage records its candidates, scores, and latenc
 """
 import logging
 import time
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -45,13 +45,13 @@ class RetrievalConfig(BaseModel):
 
 
 class RetrievalPipeline:
-    def __init__(self, config: Optional[RetrievalConfig] = None):
+    def __init__(self, config: RetrievalConfig | None = None):
         self.config = config or RetrievalConfig.from_settings()
         self.store = PgVectorStore.get()
         self.embedder = EmbeddingService.get()
 
     async def run(
-        self, query: str, document_ids: list[str], tracer: Optional[Tracer] = None
+        self, query: str, document_ids: list[str], tracer: Tracer | None = None
     ) -> list[RetrievalResult]:
         cfg = self.config
         if not document_ids:
@@ -123,7 +123,7 @@ class RetrievalPipeline:
         return candidates[: cfg.top_k_final]
 
     async def _ranked_lists_for(
-        self, q: str, document_ids: list[str], tracer: Optional[Tracer] = None
+        self, q: str, document_ids: list[str], tracer: Tracer | None = None
     ) -> list[list[str]]:
         """Ranked chunk-id lists for one query under the configured mode."""
         cfg = self.config

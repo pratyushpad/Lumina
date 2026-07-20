@@ -5,7 +5,8 @@ is kept for existing callers; new callers that need provider/timing metadata use
 generate_result / generate_stream_events.
 """
 import logging
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Optional
 
 from app.services.generation.providers.base import GenResult, StreamEvent
 from app.services.generation.providers.router import ProviderRouter

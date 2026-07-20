@@ -1,10 +1,8 @@
 """Document parser: extracts text blocks, images, and tables from PDF/text/image files."""
 import logging
-import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import fitz  # PyMuPDF
 import pdfplumber
@@ -27,7 +25,7 @@ class ParseResult:
 
 
 class DocumentParser:
-    def __init__(self, processed_dir: Optional[str] = None):
+    def __init__(self, processed_dir: str | None = None):
         self.processed_dir = processed_dir or settings.PROCESSED_DIR
         self.images_dir = Path(self.processed_dir) / "images"
         self.images_dir.mkdir(parents=True, exist_ok=True)
@@ -128,7 +126,7 @@ class DocumentParser:
 
     def _parse_text(self, file_path: str, document_id: str) -> ParseResult:
         result = ParseResult(document_id=document_id)
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
             content = f.read()
         content = normalize_whitespace(content)
         if content:

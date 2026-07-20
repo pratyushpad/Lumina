@@ -7,7 +7,7 @@ Answering "why did this query return that chunk" is a table lookup, not archaeol
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, Optional
+from typing import Any
 
 from app.database import AsyncSessionLocal
 from app.models.trace import Trace, TraceStage
@@ -16,14 +16,14 @@ logger = logging.getLogger("lumina.tracing")
 
 
 class Tracer:
-    def __init__(self, query: str, session_id: Optional[str] = None):
+    def __init__(self, query: str, session_id: str | None = None):
         self.query = query
         self.session_id = session_id
         self._t0 = time.perf_counter()
         self._stages: list[tuple[str, int, Any]] = []
-        self.provider: Optional[str] = None
-        self.model: Optional[str] = None
-        self.tokens_per_sec: Optional[float] = None
+        self.provider: str | None = None
+        self.model: str | None = None
+        self.tokens_per_sec: float | None = None
 
     def stage(self, name: str, latency_ms: int, payload: Any = None) -> None:
         self._stages.append((name, latency_ms, payload))
@@ -46,7 +46,7 @@ class Tracer:
         self.model = model
         self.tokens_per_sec = tokens_per_sec
 
-    async def flush(self, message_id: Optional[str] = None) -> str:
+    async def flush(self, message_id: str | None = None) -> str:
         total_ms = int((time.perf_counter() - self._t0) * 1000)
         trace = Trace(
             message_id=message_id,

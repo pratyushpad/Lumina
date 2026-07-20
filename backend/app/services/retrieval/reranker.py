@@ -30,7 +30,7 @@ class Reranker:
         return cls._instance
 
     def rerank(
-        self, query: str, results: list[RetrievalResult], top_k: Optional[int] = None
+        self, query: str, results: list[RetrievalResult], top_k: int | None = None
     ) -> list[RetrievalResult]:
         if not results:
             return []
@@ -38,7 +38,7 @@ class Reranker:
         fused_order = list(results)  # upstream hybrid/RRF ranking, best-first
         pairs = [(query, r.text) for r in results]
         scores = self.model.predict(pairs)
-        for r, s in zip(results, scores):
+        for r, s in zip(results, scores, strict=True):
             r.relevance_score = _sigmoid(float(s))
         ranked = sorted(results, key=lambda r: r.relevance_score, reverse=True)
         # Cross-encoders can zero out every pair on paraphrase/typo queries

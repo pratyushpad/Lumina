@@ -6,7 +6,6 @@ can compare corpora chunked different ways side by side.
 """
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from app.config import settings
 from app.utils.text_utils import estimate_tokens
@@ -24,14 +23,14 @@ class ChunkData:
     token_estimate: int
     filename: str
     has_associated_image: bool = False
-    image_path: Optional[str] = None
+    image_path: str | None = None
     chunking_strategy: str = "recursive"
 
 
 class BaseChunker:
     strategy = "base"
 
-    def __init__(self, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None):
+    def __init__(self, chunk_size: int | None = None, chunk_overlap: int | None = None):
         self.chunk_size = chunk_size or settings.CHUNK_SIZE
         self.chunk_overlap = chunk_overlap or settings.CHUNK_OVERLAP
 
@@ -199,7 +198,7 @@ class SemanticChunker(BaseChunker):
         threshold = float(np.percentile(sims, self._BREAKPOINT_PERCENTILE))
 
         groups: list[list[str]] = [[sentences[0]]]
-        for sent, sim in zip(sentences[1:], sims):
+        for sent, sim in zip(sentences[1:], sims, strict=True):
             if sim < threshold:
                 groups.append([sent])
             else:
@@ -230,9 +229,9 @@ _STRATEGIES = {c.strategy: c for c in (FixedChunker, RecursiveChunker, SemanticC
 
 
 def get_chunker(
-    strategy: Optional[str] = None,
-    chunk_size: Optional[int] = None,
-    chunk_overlap: Optional[int] = None,
+    strategy: str | None = None,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
 ) -> BaseChunker:
     name = strategy or settings.CHUNKING_STRATEGY
     if name not in _STRATEGIES:
