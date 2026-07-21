@@ -36,3 +36,6 @@ node-compile-cache/
 # arXiv PDFs are fetched, not committed (scripts/fetch_papers.py) — arXiv license does not cover redistribution
 backend/demo_docs/*.pdf
 eval/corpus/*.pdf
+
+# stray esbuild output from SSE debugging
+sse-*/
