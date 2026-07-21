@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml/badge.svg)](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml)
 
-**Live demo: [luminarag.vercel.app](https://luminarag.vercel.app)** — click
+**Live demo: [lumina-rag-two.vercel.app](https://lumina-rag-two.vercel.app)** — click
 *Try the live demo* for a pre-seeded session over two classic papers; a cited answer
 is one click away. (API: [prat20-lumina-api.hf.space](https://prat20-lumina-api.hf.space/docs),
 free-tier hosted — first answer of the day may take a few extra seconds.)
