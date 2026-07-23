@@ -44,11 +44,7 @@ export function CountUp({ value, prefix = "", suffix = "", className }: CountUpP
   }, [reduce, value]);
 
   return (
-    <span
-      ref={ref}
-      className={className}
-      style={{ minWidth: `${finalText.length}ch` }}
-    >
+    <span ref={ref} className={className} style={{ minWidth: `${finalText.length}ch` }}>
       <span className="tabular-nums">
         {prefix}
         {display}

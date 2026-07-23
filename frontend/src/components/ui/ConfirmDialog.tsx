@@ -99,7 +99,10 @@ export function ConfirmDialog({
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm hairline-strong bg-surface p-5"
           >
-            <h2 id="confirm-dialog-title" className="font-display text-lg font-bold tracking-tight2">
+            <h2
+              id="confirm-dialog-title"
+              className="font-display text-lg font-bold tracking-tight2"
+            >
               {title}
             </h2>
             {description && (

@@ -21,9 +21,7 @@ export function CitationChip({ citation }: { citation: Citation }) {
 
   // Enter/exit are asymmetric: exit collapses faster than it opens, matching
   // the house rule that dismissal should feel snappier than disclosure.
-  const disclosureTransition = reduceMotion
-    ? { duration: 0 }
-    : { duration: duration.base, ease };
+  const disclosureTransition = reduceMotion ? { duration: 0 } : { duration: duration.base, ease };
   const disclosureExitTransition = reduceMotion
     ? { duration: 0 }
     : { duration: duration.fast, ease };

@@ -28,7 +28,14 @@ interface Props {
  * here. Real per-stage latency only ever appears in the TraceInspector,
  * sourced from an actual trace.
  */
-const PIPELINE_KEYS = ["query_transform", "dense", "sparse_bm25", "fusion", "rerank", "generation"] as const;
+const PIPELINE_KEYS = [
+  "query_transform",
+  "dense",
+  "sparse_bm25",
+  "fusion",
+  "rerank",
+  "generation",
+] as const;
 const PIPELINE_STAGES = PIPELINE_KEYS.map((key) => ({ key, label: STAGE_HINTS[key] }));
 
 /**
@@ -69,7 +76,10 @@ function PipelineIndicator({ retrievalDone }: { retrievalDone: boolean }) {
       <span className="sr-only" role="status" aria-live="polite">
         {PIPELINE_STAGES[activeIdx].label}…
       </span>
-      <div aria-hidden className="flex flex-wrap items-center gap-y-2 font-mono text-[10px] uppercase tracking-tight2">
+      <div
+        aria-hidden
+        className="flex flex-wrap items-center gap-y-2 font-mono text-[10px] uppercase tracking-tight2"
+      >
         {PIPELINE_STAGES.map((stage, i) => {
           const state = i < activeIdx ? "done" : i === activeIdx ? "active" : "pending";
           return (
@@ -149,7 +159,12 @@ function ProviderBadge({
       {meta && meta.tokens_per_sec > 0 && (
         <span>
           {" "}
-          · <NumberTicker value={meta.tokens_per_sec} decimals={1} suffix={meta.tokens_estimated ? "~" : ""} />{" "}
+          ·{" "}
+          <NumberTicker
+            value={meta.tokens_per_sec}
+            decimals={1}
+            suffix={meta.tokens_estimated ? "~" : ""}
+          />{" "}
           tok/s
         </span>
       )}

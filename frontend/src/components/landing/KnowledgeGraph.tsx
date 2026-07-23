@@ -170,14 +170,7 @@ export function KnowledgeGraph({ scrollProgress, className }: KnowledgeGraphProp
             );
           })}
           {CORPUS_NODES.map((n) => (
-            <circle
-              key={n.id}
-              cx={n.x}
-              cy={n.y}
-              r={2}
-              fill="rgb(var(--ink))"
-              opacity={0.22}
-            />
+            <circle key={n.id} cx={n.x} cy={n.y} r={2} fill="rgb(var(--ink))" opacity={0.22} />
           ))}
         </g>
       </motion.g>
@@ -204,14 +197,15 @@ export function KnowledgeGraph({ scrollProgress, className }: KnowledgeGraphProp
       </motion.g>
 
       {/* Query node: fixed anchor, does not rotate with either ring. */}
+      <circle ref={centerRef} cx={CENTER.x} cy={CENTER.y} r={7} fill="rgb(var(--ink))" />
       <circle
-        ref={centerRef}
         cx={CENTER.x}
         cy={CENTER.y}
-        r={7}
-        fill="rgb(var(--ink))"
+        r={13}
+        fill="none"
+        stroke="rgb(var(--ink))"
+        strokeOpacity={0.25}
       />
-      <circle cx={CENTER.x} cy={CENTER.y} r={13} fill="none" stroke="rgb(var(--ink))" strokeOpacity={0.25} />
     </svg>
   );
 }

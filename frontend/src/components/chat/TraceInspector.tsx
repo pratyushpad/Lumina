@@ -36,7 +36,11 @@ function StageRow({ stage, maxMs, index }: { stage: TraceStage; maxMs: number; i
             style={{ width: `${widthPct}%`, transformOrigin: "left" }}
             initial={reduceMotion ? false : { scaleX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ duration: duration.slow, ease, delay: revealDelay + (reduceMotion ? 0 : 0.08) }}
+            transition={{
+              duration: duration.slow,
+              ease,
+              delay: revealDelay + (reduceMotion ? 0 : 0.08),
+            }}
           />
         </span>
         <span className="w-16 shrink-0 text-right font-mono text-[11px] text-textMuted">

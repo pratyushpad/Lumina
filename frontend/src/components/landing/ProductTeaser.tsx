@@ -69,10 +69,13 @@ export function ProductTeaser() {
         const t2 = window.setTimeout(() => setPhase("hold"), 350 + 900);
         const t3 = window.setTimeout(() => setPhase("resetting"), 350 + 900 + 3200);
         const t4 = window.setTimeout(() => setPhase("question"), 350 + 900 + 3200 + 500);
-        const t5 = window.setTimeout(() => {
-          setShown(0);
-          setPhase("answering");
-        }, 350 + 900 + 3200 + 500 + 1400);
+        const t5 = window.setTimeout(
+          () => {
+            setShown(0);
+            setPhase("answering");
+          },
+          350 + 900 + 3200 + 500 + 1400,
+        );
         timers.current.push(t1, t2, t3, t4, t5);
       }
     }, CHAR_MS);

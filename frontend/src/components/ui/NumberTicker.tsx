@@ -19,7 +19,12 @@ interface NumberTickerProps {
  * Reserves its own final width in `ch` units so the digit count-up cannot
  * shift surrounding layout (CLS guard).
  */
-export function NumberTicker({ value, decimals = 0, suffix = "", className = "" }: NumberTickerProps) {
+export function NumberTicker({
+  value,
+  decimals = 0,
+  suffix = "",
+  className = "",
+}: NumberTickerProps) {
   const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLSpanElement>(null);
   const finalText = `${value.toFixed(decimals)}${suffix}`;

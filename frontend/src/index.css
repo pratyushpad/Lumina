@@ -138,12 +138,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(var(--ink) / 0.06),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgb(var(--ink) / 0.06), transparent);
   transform: translateX(-100%);
   animation: shimmer 1.4s ease-in-out infinite;
 }
