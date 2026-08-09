@@ -5,7 +5,12 @@
 **Live demo: [luminarag.vercel.app](https://luminarag.vercel.app)** — click
 *Try the live demo* for a pre-seeded session over two classic papers; a cited answer
 is one click away. (API: [prat20-lumina-api.hf.space](https://prat20-lumina-api.hf.space/docs),
-free-tier hosted — first answer of the day may take a few extra seconds.)
+free-tier hosted — a cold start takes **30–60 seconds**, not "a few". A scheduled
+[keep-alive workflow](.github/workflows/keepalive.yml) pings the API every 10 minutes
+during waking hours to make that rare, and if you do catch it asleep the UI shows a
+"waking the API" state and retries automatically.)
+
+[![Lumina live demo — landing page](docs/live-demo.png)](https://luminarag.vercel.app)
 
 Upload PDFs / images / text into isolated sessions, then chat with cited, grounded
 answers. Built to be **measured, not vibed**: hybrid BM25+dense retrieval with RRF
@@ -22,11 +27,23 @@ Measured on the frozen 52-question eval set over a documented 4-document corpus
 (full tables in [`docs/eval.md`](docs/eval.md), method details in
 [`MODEL_CARD.md`](MODEL_CARD.md)):
 
-| Configuration | recall@5 | MRR | NDCG@10 |
-|---|---|---|---|
-| dense only (MiniLM baseline) | 0.571 | 0.427 | 0.469 |
-| hybrid RRF (BM25+dense) | 0.762 | 0.670 | 0.707 |
-| **hybrid + cross-encoder rerank** | **0.869** | **0.795** | **0.793** |
+| Configuration | recall@5 | MRR | NDCG@10 | p50 latency |
+|---|---|---|---|---|
+| dense only (MiniLM baseline) | 0.571 | 0.427 | 0.469 | 26 ms |
+| sparse only (BM25) | **0.881** | **0.811** | **0.818** | **9 ms** |
+| hybrid RRF (BM25+dense) | 0.762 | 0.670 | 0.707 | 29 ms |
+| hybrid + cross-encoder rerank *(shipped)* | 0.869 | 0.795 | 0.793 | 287 ms |
+
+**When hybrid earns its latency (and when it doesn't).** Read the table honestly:
+on this eval set, plain BM25 beats the shipped hybrid + rerank pipeline on every
+retrieval metric at 9 ms instead of 287 ms. That's not a typo — it's the expected
+consequence of how the dataset was built: the frozen questions were drafted from
+the actual chunk contents, so they share vocabulary with their source chunks,
+conditions that maximally favor lexical retrieval (`docs/eval.md`, method notes).
+The full pipeline ships anyway because dense retrieval and reranking are there for
+the queries this set can't measure — paraphrased, vocabulary-mismatched questions
+where BM25 has nothing to match on. The ablation table exists precisely so that
+trade-off is visible instead of hidden.
 
 - True Okapi BM25 beats Postgres FTS as the sparse channel on every metric
   (e.g. hybrid recall@5 0.762 vs 0.619).
