@@ -1,0 +1,25 @@
+# Keep the free-tier HF Space warm during waking hours so visitors rarely hit
+# the 30–60 s cold start. Pings /health every 10 minutes between 14:00 and
+# 06:59 UTC (~7am–11pm US Pacific); outside that window the Space is allowed
+# to sleep.
+#
+# GitHub scheduled workflows are best-effort: runs can be delayed or skipped
+# under load, so this reduces cold starts rather than eliminating them. The
+# frontend still shows a graceful "waking" state for the misses.
+name: keepalive
+
+on:
+  schedule:
+    # */10 in hours 0-6 and 14-23 UTC == every 10 min, 14:00–06:59 UTC.
+    - cron: "*/10 0-6,14-23 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping API /health
+        # || true: a failed ping (Space rebuilding, transient 5xx) must not
+        # produce a red X or failure email — this job is fire-and-forget.
+        run: curl -fsS --max-time 30 https://prat20-lumina-api.hf.space/health || true
