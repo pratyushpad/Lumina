@@ -39,11 +39,25 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * One probe of the API's health endpoint with a hard timeout. Used by the
+ * first-load waking flow: the free-tier HF Space sleeps when idle and takes
+ * 30–60 s to cold-start, so the UI polls this instead of surfacing an error.
+ */
+export async function pingHealth(timeoutMs = 8_000): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export const api = {
   // sessions
   createSession: (name?: string) =>
     http<Session>("/api/sessions/", { method: "POST", body: JSON.stringify({ name }) }),
-  listSessions: () => http<SessionListResponse>("/api/sessions/"),
+  listSessions: (init?: RequestInit) => http<SessionListResponse>("/api/sessions/", init),
   getSession: (id: string) => http<Session>(`/api/sessions/${id}`),
   renameSession: (id: string, name: string) =>
     http<Session>(`/api/sessions/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
