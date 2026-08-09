@@ -63,8 +63,8 @@ Then rebuild the HF Space from this commit as a single clean commit by `prat20`
 
 - Env: `VITE_API_URL=https://prat20-lumina-api.hf.space` (unchanged).
 - Deploy the SPA (CLI-driven, not GitHub-integrated).
-- Add **`luminarag.vercel.app`** as the project's primary domain; the old
-  `lumina-rag-two` URL then redirects.
+- **`luminarag.vercel.app`** is the canonical domain; a host-based redirect in
+  `frontend/vercel.json` 308s the old `lumina-rag-two` URL to it.
 
 ## 6. Post-deploy smoke test (live)
 

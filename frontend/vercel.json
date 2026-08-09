@@ -1,3 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "lumina-rag-two.vercel.app" }],
+      "destination": "https://luminarag.vercel.app/",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "lumina-rag-two.vercel.app" }],
+      "destination": "https://luminarag.vercel.app/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
