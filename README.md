@@ -1,16 +1,16 @@
-# Lumina — Production-Shaped Multimodal RAG
+# Lumina: Multimodal RAG
 
 [![CI](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml/badge.svg)](https://github.com/pratyushpad/Lumina/actions/workflows/ci.yml)
 
-**Live demo: [luminarag.vercel.app](https://luminarag.vercel.app)** — click
+**Live demo: [luminarag.vercel.app](https://luminarag.vercel.app)**. Click
 *Try the live demo* for a pre-seeded session over two classic papers; a cited answer
 is one click away. (API: [prat20-lumina-api.hf.space](https://prat20-lumina-api.hf.space/docs),
-free-tier hosted — a cold start takes **30–60 seconds**, not "a few". A scheduled
+free-tier hosted. A cold start takes **30-60 seconds**, not "a few". A scheduled
 [keep-alive workflow](.github/workflows/keepalive.yml) pings the API every 10 minutes
 during waking hours to make that rare, and if you do catch it asleep the UI shows a
 "waking the API" state and retries automatically.)
 
-[![Lumina live demo — landing page](docs/live-demo.png)](https://luminarag.vercel.app)
+[![Lumina live demo landing page](docs/live-demo.png)](https://luminarag.vercel.app)
 
 Upload PDFs / images / text into isolated sessions, then chat with cited, grounded
 answers. Built to be **measured, not vibed**: hybrid BM25+dense retrieval with RRF
@@ -36,25 +36,25 @@ Measured on the frozen 52-question eval set over a documented 4-document corpus
 
 **When hybrid earns its latency (and when it doesn't).** Read the table honestly:
 on this eval set, plain BM25 beats the shipped hybrid + rerank pipeline on every
-retrieval metric at 9 ms instead of 287 ms. That's not a typo — it's the expected
+retrieval metric at 9 ms instead of 287 ms. That's not a typo. It's the expected
 consequence of how the dataset was built: the frozen questions were drafted from
 the actual chunk contents, so they share vocabulary with their source chunks,
 conditions that maximally favor lexical retrieval (`docs/eval.md`, method notes).
 The full pipeline ships anyway because dense retrieval and reranking are there for
-the queries this set can't measure — paraphrased, vocabulary-mismatched questions
+the queries this set can't measure: paraphrased, vocabulary-mismatched questions
 where BM25 has nothing to match on. The ablation table exists precisely so that
 trade-off is visible instead of hidden.
 
 - True Okapi BM25 beats Postgres FTS as the sparse channel on every metric
   (e.g. hybrid recall@5 0.762 vs 0.619).
-- Multi-query rewriting added ~700 ms p50 and moved **no** metric — measured, and
+- Multi-query rewriting added ~700 ms p50 and moved **no** metric. Measured, and
   therefore off by default.
-- Confidence refusal gate calibrated against 10 unanswerable questions — the
+- Confidence refusal gate calibrated against 10 unanswerable questions: the
   two-stage gate (cross-encoder + bi-encoder second chance) shows 0% false
   refusals and 0% false answers across the full threshold sweep (`docs/eval.md`).
 - Generation (llama-3.3-70b via Groq, graded cross-family by a Gemini judge,
   n=18): faithfulness 0.97, answer relevancy 0.97, context recall 0.94, context
-  precision 0.60 — caveats in `docs/eval.md`.
+  precision 0.60. Caveats in `docs/eval.md`.
 
 ## Architecture
 
@@ -102,7 +102,7 @@ make dev-backend                       # migrations run automatically at startup
 cd frontend && npm install && npm run dev
 ```
 
-## Local LLM serving (optional — any OpenAI-compatible endpoint)
+## Local LLM serving (optional; any OpenAI-compatible endpoint)
 
 The `local` provider speaks the OpenAI-compatible API, so Ollama and vLLM both work,
 pointed at whatever machine has a GPU:
@@ -124,7 +124,7 @@ Health checks are cached (30 s TTL); if the box is off, requests fall back to
 Gemini automatically, and the UI badge + trace show which provider actually served
 each answer, with measured tokens/sec.
 
-The same provider slot speaks to any hosted OpenAI-compatible endpoint — the
+The same provider slot speaks to any hosted OpenAI-compatible endpoint. The
 live deployment runs Groq (`llama-3.3-70b-versatile`) as primary with Gemini
 fallback, all free-tier:
 
@@ -158,14 +158,14 @@ message opens the pipeline inspector; via API it's `GET /api/traces/{message_id}
 
 - **Refusal (two-stage)**: if the top rerank score is below `MIN_RERANK_SCORE`,
   a bi-encoder second chance re-checks the top candidates (cosine sim vs
-  `MIN_BIENCODER_SIM`) — catching honest paraphrases the cross-encoder
+  `MIN_BIENCODER_SIM`), catching honest paraphrases the cross-encoder
   under-scores (query "salary" vs a chunk saying "compensation"). Only when both
   signals are weak does Lumina answer "not in your documents" without calling the
   LLM (sweep in `docs/eval.md` models the two-stage gate exactly).
 - **Prompt injection**: retrieved chunks matching injection heuristics are wrapped
   in warning delimiters before entering the prompt.
 - **PII**: optional regex scrub (emails/phones/SSNs/cards) at ingest via
-  `PII_SCRUB_ON_INGEST=true` — regexes only, limitations documented in the source.
+  `PII_SCRUB_ON_INGEST=true`. Regexes only; limitations documented in the source.
 
 ## API surface
 
@@ -184,14 +184,14 @@ capability) and, when signed in, `Authorization: Bearer <jwt>`.
   that phones home; there is no telemetry anywhere in the stack.
 - **Private by default.** Every session is scoped to an opaque per-browser token
   (`X-Owner-Token`, generated locally, never in a URL). One visitor cannot list,
-  read, or mutate another's sessions — a session that isn't yours returns 404, not
+  read, or mutate another's sessions. A session that isn't yours returns 404, not
   403, so its existence isn't even confirmable. The shared demo library is
   read-only, and each visitor sees only their own demo conversation.
 - **Sign-in is optional** (Google, self-rolled OAuth). It exists only to save your
   sessions to an account so they follow you across devices; signing in adopts the
   sessions you already made in that browser. The app is fully usable signed out.
   The session token is a short-lived JWT in `localStorage` (Bearer header, not a
-  cookie — the SPA and API are different sites). No Google tokens are stored.
+  cookie, since the SPA and API are different sites). No Google tokens are stored.
 - **Deletion is real and complete.** Deleting a document removes its vectors and
   BM25 entries and its files on disk; deleting a session cascades to its documents,
   chunks, messages, traces, and uploaded files. Nothing is soft-deleted or retained.
@@ -218,7 +218,7 @@ questions always hit a real provider and count against the day's quota.
   extension (ParadeDB `pg_search`). The `fts` sparse mode (`ts_rank_cd`, not true
   BM25) is already wired as a single-SQL alternative.
 - Generation metrics use an LLM judge (Gemini flash-lite grading Llama-3.3-70B
-  answers — cross-family, which reduces but does not eliminate judge bias).
+  answers; cross-family, which reduces but does not eliminate judge bias).
   Absolute scores should still be read with skepticism; the retrieval ablation
   deltas are the primary signal. See `MODEL_CARD.md`.
 - The eval questions share vocabulary with their source chunks, which favors
