@@ -6,6 +6,10 @@
 # GitHub scheduled workflows are best-effort: runs can be delayed or skipped
 # under load, so this reduces cold starts rather than eliminating them. The
 # frontend still shows a graceful "waking" state for the misses.
+#
+# GitHub also disables scheduled workflows in public repos after 60 days
+# without a commit. Each run re-enables this workflow through the API, which
+# resets that clock, so it stays alive without dummy commits.
 name: keepalive
 
 on:
@@ -18,8 +22,18 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    permissions:
+      actions: write # for the re-enable call below; nothing else is needed
     steps:
       - name: Ping API /health
         # || true: a failed ping (Space rebuilding, transient 5xx) must not
         # produce a red X or failure email — this job is fire-and-forget.
         run: curl -fsS --max-time 30 https://prat20-lumina-api.hf.space/health || true
+      - name: Reset the 60-day inactivity clock
+        # Same fire-and-forget rule: a failure leaves a warning annotation, not
+        # a red X. GitHub's own "will be disabled soon" email is the backstop.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/keepalive.yml/enable" \
+            || echo "::warning::Could not re-enable keepalive; GitHub may disable it after 60 days without a commit."
