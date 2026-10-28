@@ -6,26 +6,33 @@
 *Try the live demo* for a pre-seeded session over two classic papers; a cited answer
 is one click away. (API: [prat20-lumina-api.hf.space](https://prat20-lumina-api.hf.space/docs),
 free-tier hosted. A cold start takes **30-60 seconds**, not "a few". A scheduled
-[keep-alive workflow](.github/workflows/keepalive.yml) pings the API every 10 minutes
-during waking hours to make that rare, and if you do catch it asleep the UI shows a
-"waking the API" state and retries automatically.)
+[keep-alive workflow](.github/workflows/keepalive.yml) pings the API so it rarely
+sleeps (GitHub throttles scheduled runs, so in practice that is a few pings a day,
+which is enough: the Space only sleeps after 48 hours idle). If you do catch it
+asleep, the UI shows a "waking the API" state and retries automatically.)
 
 [![Lumina live demo landing page](docs/live-demo.png)](https://luminarag.vercel.app)
 
 Upload PDFs / images / text into isolated sessions, then chat with cited, grounded
-answers. Built to be **measured, not vibed**: hybrid BM25+dense retrieval with RRF
-fusion, a cross-encoder reranker, a local-GPU/hosted LLM provider abstraction,
-per-query pipeline tracing, confidence-based refusal, and a frozen eval set with a
-per-component ablation table.
+answers. RAG built from primitives (no LangChain or LlamaIndex) and built to be
+**measured, not vibed**: hybrid BM25+dense retrieval with RRF fusion, a
+cross-encoder reranker, a provider-agnostic LLM layer, per-query pipeline tracing,
+confidence-based refusal, and a frozen eval set with a per-component ablation table.
+
+Generation runs on **Gemini 2.5 Flash** by default (it also handles image
+description). A second, OpenAI-compatible slot can point at a local model (Ollama,
+vLLM) or any hosted OpenAI-compatible API; the router falls back between them.
 
 Sessions are private to your browser by default; sign in with Google (optional) to
 save them to an account and pick them up from another device.
 
 ## Results (10-second version)
 
-Measured on the frozen 52-question eval set over a documented 4-document corpus
-(full tables in [`docs/eval.md`](docs/eval.md), method details in
-[`MODEL_CARD.md`](MODEL_CARD.md)):
+Retrieval is measured on **42 answerable questions** from a frozen eval set over a
+documented 4-document corpus (363 chunks); **10 unanswerable questions** test the
+refusal gate. Full tables in [`docs/eval.md`](docs/eval.md), method details in
+[`MODEL_CARD.md`](MODEL_CARD.md). One command reproduces the retrieval table:
+`make eval-repro` (see [Evaluation](#evaluation)).
 
 | Configuration | recall@5 | MRR | NDCG@10 | p50 latency |
 |---|---|---|---|---|
@@ -34,27 +41,34 @@ Measured on the frozen 52-question eval set over a documented 4-document corpus
 | hybrid RRF (BM25+dense) | 0.762 | 0.670 | 0.707 | 29 ms |
 | hybrid + cross-encoder rerank *(shipped)* | 0.869 | 0.795 | 0.793 | 287 ms |
 
-**When hybrid earns its latency (and when it doesn't).** Read the table honestly:
-on this eval set, plain BM25 beats the shipped hybrid + rerank pipeline on every
-retrieval metric at 9 ms instead of 287 ms. That's not a typo. It's the expected
+**Finding: BM25 alone beats the shipped pipeline.** On this eval set, plain BM25
+beats the shipped hybrid + rerank pipeline on every retrieval metric, at 9 ms
+instead of 287 ms. That's not a typo. With 42 questions, the recall@5 gap
+(0.881 vs 0.869) is a single question, so the honest reading is "no measurable
+gain from hybrid + rerank here", not "hybrid is better". It's the expected
 consequence of how the dataset was built: the frozen questions were drafted from
 the actual chunk contents, so they share vocabulary with their source chunks,
 conditions that maximally favor lexical retrieval (`docs/eval.md`, method notes).
-The full pipeline ships anyway because dense retrieval and reranking are there for
+The full pipeline ships anyway because dense retrieval and reranking are meant for
 the queries this set can't measure: paraphrased, vocabulary-mismatched questions
-where BM25 has nothing to match on. The ablation table exists precisely so that
+where BM25 has nothing to match on. That benefit is a hypothesis, not a result:
+no paraphrased split exists yet. The ablation table exists precisely so that
 trade-off is visible instead of hidden.
 
 - True Okapi BM25 beats Postgres FTS as the sparse channel on every metric
   (e.g. hybrid recall@5 0.762 vs 0.619).
 - Multi-query rewriting added ~700 ms p50 and moved **no** metric. Measured, and
   therefore off by default.
-- Confidence refusal gate calibrated against 10 unanswerable questions: the
+- Confidence refusal gate checked against 10 unanswerable questions: the
   two-stage gate (cross-encoder + bi-encoder second chance) shows 0% false
-  refusals and 0% false answers across the full threshold sweep (`docs/eval.md`).
-- Generation (llama-3.3-70b via Groq, graded cross-family by a Gemini judge,
-  n=18): faithfulness 0.97, answer relevancy 0.97, context recall 0.94, context
-  precision 0.60. Caveats in `docs/eval.md`.
+  refusals and 0% false answers at every threshold in the sweep. Because the
+  rates are flat, the sweep does not discriminate between thresholds; the
+  unanswerable questions are clearly off-topic (`docs/eval.md`).
+- Generation metrics are older and smaller: **n=18** answers, generated in July
+  2026 by `llama-3.3-70b-versatile` on Groq (a model Groq has since retired) and
+  graded by a Gemini judge: faithfulness 0.97, answer relevancy 0.97, context
+  recall 0.94, context precision 0.60. They have not been re-run with the current
+  default generator (Gemini 2.5 Flash). Caveats in `docs/eval.md`.
 
 ## Architecture
 
@@ -74,7 +88,7 @@ trade-off is visible instead of hidden.
                  PromptBuilder (+ injection-scan delimiters)
                           │
                           ▼
-        ProviderRouter: OpenAI-compat (Groq / Ollama / vLLM) ──fallback──► Gemini
+        ProviderRouter: Gemini 2.5 Flash ◄──fallback──► OpenAI-compat (Ollama / vLLM / hosted)
                           │  SSE stream + provider/tokens-per-sec meta
                           ▼
              React UI (citations, provider badge, per-message trace inspector)
@@ -124,24 +138,40 @@ Health checks are cached (30 s TTL); if the box is off, requests fall back to
 Gemini automatically, and the UI badge + trace show which provider actually served
 each answer, with measured tokens/sec.
 
-The same provider slot speaks to any hosted OpenAI-compatible endpoint. The
-live deployment runs Groq (`llama-3.3-70b-versatile`) as primary with Gemini
-fallback, all free-tier:
+The same provider slot speaks to any hosted OpenAI-compatible endpoint. The live
+deployment currently answers with Gemini 2.5 Flash (the UI badge and trace show the
+serving provider). It previously used Groq's `llama-3.3-70b-versatile`, which Groq
+retired for free and developer tiers on Aug 16, 2026. To use Groq again, point the
+slot at a current model; `openai/gpt-oss-120b` is Groq's recommended replacement
+(listed as a production model in Groq's docs, not yet evaluated in Lumina):
 
 ```bash
 LLM_PROVIDER_ORDER=local,gemini
 LOCAL_LLM_BASE_URL=https://api.groq.com/openai/v1
-LOCAL_LLM_MODEL=llama-3.3-70b-versatile
+LOCAL_LLM_MODEL=openai/gpt-oss-120b
 LOCAL_LLM_API_KEY=gsk_...
 ```
 
 ## Evaluation
 
+One command, from a fresh clone (needs Docker and Python 3.10+):
+
+```bash
+make eval-repro       # Postgres up, venv, fetch papers, ingest, retrieval eval
+```
+
+It runs [`scripts/run_eval.sh`](scripts/run_eval.sh): starts the pgvector
+container, creates `backend/.venv` if missing, downloads the arXiv PDFs
+(sha256-verified), ingests the corpus deterministically and writes the retrieval
+ablation and refusal sweep to `docs/eval.md`. Without a `GEMINI_API_KEY`, the
+multi-query row (the only retrieval row that calls an LLM) is skipped. The steps
+individually:
+
 ```bash
 make fetch-papers     # download the arXiv corpus PDFs (not committed; sha256-verified)
 make ingest           # deterministic corpus ingestion (stable chunk ids + manifest)
-make eval-retrieval   # ablation table + refusal-threshold sweep (no LLM cost)
-make eval             # + generation metrics with the LLM judge (throttled)
+make eval-retrieval   # ablation table + refusal-threshold sweep
+make eval             # + generation metrics with the LLM judge (throttled, uses API quota)
 ```
 
 Everything lands in `docs/eval.md`. The dataset (`eval/dataset.jsonl`) is frozen;
@@ -217,10 +247,12 @@ questions always hit a real provider and count against the day's quota.
   in memory; at scale, switch to FTS-prefilter → BM25 rerank or a Postgres BM25
   extension (ParadeDB `pg_search`). The `fts` sparse mode (`ts_rank_cd`, not true
   BM25) is already wired as a single-SQL alternative.
-- Generation metrics use an LLM judge (Gemini flash-lite grading Llama-3.3-70B
-  answers; cross-family, which reduces but does not eliminate judge bias).
-  Absolute scores should still be read with skepticism; the retrieval ablation
-  deltas are the primary signal. See `MODEL_CARD.md`.
+- Generation metrics use an LLM judge (Gemini flash-lite grading 18 answers from
+  the now-retired Llama-3.3-70B; cross-family, which reduces but does not
+  eliminate judge bias). Absolute scores should be read with skepticism; the
+  retrieval ablation deltas are the primary signal. See `MODEL_CARD.md`.
+- n=42 retrieval questions with no confidence intervals: differences of about
+  0.02 in recall@5 are one question.
 - The eval questions share vocabulary with their source chunks, which favors
   lexical (BM25) retrieval; dense retrieval would fare relatively better on
   paraphrased queries.
