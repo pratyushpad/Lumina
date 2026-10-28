@@ -66,6 +66,15 @@ Then rebuild the HF Space from this commit as a single clean commit by `prat20`
 - **`luminarag.vercel.app`** is the canonical domain; a host-based redirect in
   `frontend/vercel.json` 308s the old `lumina-rag-two` URL to it.
 
+### Alternative: Netlify
+
+The SPA is static (`npm run build` makes `dist/`, no server functions), so Netlify
+works as a drop-in host. `frontend/netlify.toml` holds the build command, publish
+dir, `VITE_API_URL` and the SPA fallback. Create a Netlify site from the repo with
+base directory `frontend`, then add the new origin to the Space's `CORS_ORIGINS`
+(and, if sign-in is on, update `OAUTH_REDIRECT_URI` and the Google OAuth redirect
+URI to `<origin>/auth/callback`).
+
 ## 6. Post-deploy smoke test (live)
 
 - `GET /health/ready` → `db: ok`.
