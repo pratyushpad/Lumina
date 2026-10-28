@@ -49,10 +49,12 @@ class GeminiProvider(LLMProvider):
         t0 = time.perf_counter()
         parts: list[str] = []
         completion_tokens = 0
-        # generate_content_stream is an async-generator function — do NOT await it.
-        async for chunk in self.client.aio.models.generate_content_stream(
+        # google-genai >= 1.0: the async generate_content_stream is a coroutine that
+        # returns an AsyncIterator, so it must be awaited before iterating.
+        stream = await self.client.aio.models.generate_content_stream(
             model=self.model, contents=user, config=self._config(system)
-        ):
+        )
+        async for chunk in stream:
             if chunk.text:
                 parts.append(chunk.text)
                 yield chunk.text
