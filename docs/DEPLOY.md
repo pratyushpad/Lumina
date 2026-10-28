@@ -2,10 +2,10 @@
 
 The stack: **Vercel** (SPA) → **Hugging Face Space** `prat20/lumina-api` (FastAPI in
 Docker) → **Neon** Postgres. Free tier throughout. Database migrations run
-automatically at API startup, so Neon upgrades itself on each deploy — there is no
+automatically at API startup, so Neon upgrades itself on each deploy; there is no
 separate migration step.
 
-Do these in order. Steps 1–2 are one-time setup; 3–6 are the deploy.
+Do these in order. Steps 1 and 2 are one-time setup; 3 to 6 are the deploy.
 
 ## 1. Rotate the secrets that were shared in chat (do this first)
 
@@ -17,7 +17,7 @@ Anything pasted into a chat should be considered burned. Rotate and re-set:
 
 ## 2. (Optional) Google sign-in
 
-Skip to leave sign-in off — the app is fully usable anonymously and every auth
+Skip to leave sign-in off: the app is fully usable anonymously and every auth
 endpoint 404s while unconfigured.
 
 1. Google Cloud Console → APIs & Services → Credentials → **Create OAuth client ID**
@@ -32,11 +32,11 @@ endpoint 404s while unconfigured.
 | Key | Value |
 |---|---|
 | `DATABASE_URL` | new Neon pooled string, `postgresql+asyncpg://…-pooler.…` |
-| `GEMINI_API_KEY` | Gemini key (fallback provider + vision) |
-| `LOCAL_LLM_BASE_URL` | `https://api.groq.com/openai/v1` |
-| `LOCAL_LLM_MODEL` | `llama-3.3-70b-versatile` |
-| `LOCAL_LLM_API_KEY` | new Groq `gsk_…` key |
-| `LLM_PROVIDER_ORDER` | `local,gemini` |
+| `GEMINI_API_KEY` | Gemini key (default generator + vision) |
+| `LLM_PROVIDER_ORDER` | `gemini` (Gemini only), or `local,gemini` with the three Groq rows below |
+| `LOCAL_LLM_BASE_URL` | `https://api.groq.com/openai/v1` (only with `local` in the order) |
+| `LOCAL_LLM_MODEL` | `openai/gpt-oss-120b` (Groq retired `llama-3.3-70b-versatile` on Aug 16, 2026; not yet evaluated in Lumina) |
+| `LOCAL_LLM_API_KEY` | new Groq `gsk_…` key (only with `local` in the order) |
 | `CORS_ORIGINS` | `https://luminarag.vercel.app` |
 | `SEED_DEMO_ON_STARTUP` | `true` |
 | `TRUSTED_PROXY_HOPS` | `1` (HF adds exactly one proxy hop) |
@@ -66,6 +66,15 @@ Then rebuild the HF Space from this commit as a single clean commit by `prat20`
 - **`luminarag.vercel.app`** is the canonical domain; a host-based redirect in
   `frontend/vercel.json` 308s the old `lumina-rag-two` URL to it.
 
+### Alternative: Netlify
+
+The SPA is static (`npm run build` makes `dist/`, no server functions), so Netlify
+works as a drop-in host. `frontend/netlify.toml` holds the build command, publish
+dir, `VITE_API_URL` and the SPA fallback. Create a Netlify site from the repo with
+base directory `frontend`, then add the new origin to the Space's `CORS_ORIGINS`
+(and, if sign-in is on, update `OAUTH_REDIRECT_URI` and the Google OAuth redirect
+URI to `<origin>/auth/callback`).
+
 ## 6. Post-deploy smoke test (live)
 
 - `GET /health/ready` → `db: ok`.
@@ -74,8 +83,3 @@ Then rebuild the HF Space from this commit as a single clean commit by `prat20`
 - Two browsers: neither sees the other's sessions; demo is read-only.
 - If sign-in is on: Google round-trip on Chrome **and** Safari; after sign-in your
   anonymous sessions are adopted (claim).
-- Check the GitHub **Contributors** sidebar. History is clean (author + committer
-  are you on every commit; no co-author trailers), so the stale "Claude" chip
-  should recompute away as this push lands. If it survives, the guaranteed fix is
-  recreating the repo — verify Vercel isn't GitHub-integrated first (deploys are
-  CLI-driven, so it is safe).

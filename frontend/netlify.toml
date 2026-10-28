@@ -1,0 +1,32 @@
+# Netlify config for the static Vite SPA (an alternative to Vercel; see
+# docs/DEPLOY.md). In the Netlify UI set "Base directory" to `frontend`, so this
+# file is picked up and the paths below are relative to it.
+#
+# After the first deploy, the new origin must also be allowed on the API side
+# (Hugging Face Space variables): add it to CORS_ORIGINS, and if Google sign-in is
+# on, set OAUTH_REDIRECT_URI to <origin>/auth/callback and add that redirect URI
+# to the Google OAuth client. The app works signed out without those auth steps.
+
+[build]
+  # Netlify installs dependencies from package-lock.json before this runs.
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Public API base URL, baked in at build time (not a secret).
+  VITE_API_URL = "https://prat20-lumina-api.hf.space"
+
+# Client-side routing: serve index.html for every path that is not a real file
+# (including /auth/callback). Netlify serves existing files before applying
+# this rule, so /assets/* still resolve normally.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Vite fingerprints everything under /assets, so it can be cached forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

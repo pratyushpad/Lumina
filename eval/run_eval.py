@@ -1,7 +1,8 @@
 """Lumina evaluation harness: retrieval ablations + RAGAS-style generation metrics.
 
 Usage (from repo root, after `make ingest`):
-    make eval-retrieval   # retrieval metrics only — cheap, no LLM calls except multi-query
+    make eval-repro       # one command from a fresh clone (scripts/run_eval.sh)
+    make eval-retrieval   # retrieval metrics only: cheap, no LLM calls except multi-query
     make eval             # + generation & judge metrics on the production config (LLM calls, throttled)
 
 Runs each ablation RetrievalConfig against the exact production RetrievalPipeline
@@ -50,6 +51,14 @@ ABLATIONS: list[tuple[str, dict]] = [
 GENERATION_CONFIG = "hybrid + rerank"
 
 
+def select_ablations(skip_llm: bool) -> list[tuple[str, dict]]:
+    """Ablation rows to run. `skip_llm` drops rows whose query transform calls an LLM
+    (multi-query / HyDE), so retrieval eval runs with no API key and no cost."""
+    if not skip_llm:
+        return ABLATIONS
+    return [(n, o) for n, o in ABLATIONS if o.get("query_transform", "none") == "none"]
+
+
 def load_dataset() -> list[dict]:
     items = [json.loads(line) for line in DATASET.read_text().splitlines() if line.strip()]
     answerable = [i for i in items if i.get("relevant_chunk_ids")]
@@ -57,13 +66,15 @@ def load_dataset() -> list[dict]:
     return items
 
 
-async def eval_retrieval(items: list[dict], mq_delay: float = 13.0) -> list[dict]:
+async def eval_retrieval(
+    items: list[dict], mq_delay: float = 13.0, skip_llm: bool = False
+) -> list[dict]:
     from app.services.retrieval.pipeline import RetrievalConfig, RetrievalPipeline
 
     from eval.metrics import aggregate, ndcg_at_k, recall_at_k, reciprocal_rank
 
     rows = []
-    for name, overrides in ABLATIONS:
+    for name, overrides in select_ablations(skip_llm):
         cfg = RetrievalConfig(top_k_candidates=50, top_k_final=10, **overrides)
         pipeline = RetrievalPipeline(cfg)
         per_query, latencies, retrieved_map = [], [], {}
@@ -119,7 +130,7 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
 
     # EVAL_JUDGE_MODEL routes only the judge to a different Gemini model (e.g. a
     # flash-lite tier with a higher free-tier daily quota). Generation always stays
-    # on the production model — the judge model is recorded in the report caveats.
+    # on the production model; the judge model is recorded in the report caveats.
     from app.config import settings
 
     judge_model = os.environ.get("EVAL_JUDGE_MODEL")
@@ -159,7 +170,7 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
             answer = res.text
             gen_models.add(f"{res.provider}:{res.model}")
         except Exception as e:
-            logger.warning("generation failed on %s: %s — skipping item", item["qid"], e)
+            logger.warning("generation failed on %s: %s: skipping item", item["qid"], e)
             continue
         await asyncio.sleep(judge_delay)
 
@@ -171,7 +182,7 @@ async def eval_generation(items: list[dict], judge_delay: float, limit: int = 0)
                 "context_recall": await judge.context_recall(ref, context),
             }
         except Exception as e:
-            logger.warning("judge failed on %s: %s — skipping item", item["qid"], e)
+            logger.warning("judge failed on %s: %s: skipping item", item["qid"], e)
             continue
         per_query.append(scores)
         logger.info("[%d/%d] %s %s", i + 1, len(answerable), item["qid"],
@@ -202,7 +213,7 @@ async def eval_refusal(items: list[dict]) -> dict:
 
     embedder = EmbeddingService.get()
 
-    # (answerable, top_rerank_score, top_biencoder_sim) — mirrors the production
+    # (answerable, top_rerank_score, top_biencoder_sim): mirrors the production
     # two-stage gate in app/services/guardrails/confidence.py: refuse only when
     # the rerank score is below threshold AND the bi-encoder second chance also
     # fails (max cosine sim over the top candidates < MIN_BIENCODER_SIM).
@@ -252,6 +263,11 @@ async def main() -> None:
                     help="seconds between queries in query-transform configs")
     ap.add_argument("--gen-limit", type=int, default=0,
                     help="cap generation+judge items (0 = all) to respect daily quota")
+    ap.add_argument("--skip-llm-rows", action="store_true",
+                    help="drop retrieval rows that call an LLM (multi-query), so the "
+                         "retrieval eval needs no API key")
+    ap.add_argument("--report", type=Path, default=REPO_ROOT / "docs" / "eval.md",
+                    help="where to write the markdown report (default docs/eval.md)")
     ap.add_argument("--gen-only", action="store_true",
                     help="reuse retrieval+refusal sections from the latest run json; "
                          "only run generation + judge")
@@ -266,14 +282,16 @@ async def main() -> None:
             "timestamp": datetime.utcnow().isoformat(),
             "dataset_size": len(items),
             "retrieval": prev["retrieval"],
-            # refusal sweep is LLM-free — always recompute rather than trust staleness
+            # refusal sweep is LLM-free, so always recompute rather than trust staleness
             "refusal": await eval_refusal(items),
         }
     else:
         run = {
             "timestamp": datetime.utcnow().isoformat(),
             "dataset_size": len(items),
-            "retrieval": await eval_retrieval(items, mq_delay=args.mq_delay),
+            "retrieval": await eval_retrieval(
+                items, mq_delay=args.mq_delay, skip_llm=args.skip_llm_rows
+            ),
             "refusal": await eval_refusal(items),
         }
     if not args.retrieval_only:
@@ -289,8 +307,9 @@ async def main() -> None:
 
     from eval.report import write_report
 
-    write_report(slim, REPO_ROOT / "docs" / "eval.md")
-    logger.info("Report written to docs/eval.md")
+    report = args.report if args.report.is_absolute() else REPO_ROOT / args.report
+    write_report(slim, report)
+    logger.info("Report written to %s", report)
 
 
 if __name__ == "__main__":
