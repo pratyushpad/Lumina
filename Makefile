@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend up down test lint format ingest eval eval-retrieval
+.PHONY: dev dev-backend dev-frontend up down test lint format fetch-papers ingest eval eval-retrieval eval-repro
 
 # --- Run ---
 up:
@@ -40,3 +40,7 @@ eval:
 
 eval-retrieval:
 	$(PY) eval/run_eval.py --retrieval-only
+
+# One command from a fresh clone: Postgres up, venv, fetch, ingest, retrieval eval.
+eval-repro:
+	bash scripts/run_eval.sh
